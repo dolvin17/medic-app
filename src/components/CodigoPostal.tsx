@@ -10,7 +10,7 @@ export default function CodigoPostal() {
   useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
-      const cp = "28036";
+      const cp = "28034";
       const result: PostalData[] | null = await getPostalInfo(cp);
 
       if (result && result.length > 0) {

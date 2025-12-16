@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
+// Importamos 'useRouter' para manejar la redirección
+import { useRouter } from "next/navigation"; 
 
 export default function AuthForm() {
-  const [isLogin, setIsLogin] = useState(true); //Alternamos entre login y registro
+  const router = useRouter(); // Inicializamos el router
+
+  const [isLogin, setIsLogin] = useState(true); // Alternamos entre login y registro
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
@@ -14,95 +19,116 @@ export default function AuthForm() {
   const handleAuth = async () => {
     setLoading(true);
     setMessage("");
-    let error = null;
+    let authError = null; // Usaremos una variable para capturar el error
 
     if (isLogin) {
-      //inicio sesion
+      // INICIO SESIÓN
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      error = loginError;
+      authError = loginError;
     } else {
-      //registro
+      // REGISTRO (Ahora que la confirmación está OFF, el usuario queda autenticado)
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: nombre,
+            full_name: nombre, // Pasa el nombre para el Trigger SQL
           },
         },
       });
-      error = signUpError;
+      authError = signUpError;
     }
-    if (error) {
-      setMessage("print error.");
+
+    if (authError) {
+      // ⚠️ CORRECCIÓN: Mostrar el mensaje de error real de Supabase
+      setMessage(`Error: ${authError.message}`);
     } else {
-      setMessage("Éxito, revisa tu correo o inicia sesion");
+      // ✅ ÉXITO: Redirigir al Dashboard
+      setMessage(isLogin ? "Inicio de sesión exitoso." : "Registro exitoso. Redirigiendo...");
+      router.push('/dashboard'); 
     }
+    
     setLoading(false);
   };
+  
   const handleGoogleLogin = async () => {
-    setMessage("Redirigiendo a Google.. ");
+    setLoading(true);
+    setMessage("Redirigiendo a Google...");
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/dashboard`, // URL de redirección final
       },
     });
+
     if (error) {
-      setMessage(`Error con Google:`);
+      // ⚠️ CORRECCIÓN: Mostrar el mensaje de error de Google OAuth
+      setMessage(`Error con Google: ${error.message}`); 
+      setLoading(false); // Detener loading si hay error antes de redirigir
     }
+    // Si no hay error, el navegador se encargará de la redirección.
   };
+
   return (
     <div>
-      <h2>{isLogin ? "Iniciar Sesion" : "Registrarse"}</h2>
-      {message && <p>{message}</p>}
-      {!isLogin && (
-        <input
-          type="text"
-          placeholder="Nombre Completo"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          required
-        />
-      )}
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
+      <div className="flex flex-col justify-center">
+        <Image className="place-items-center" src="/vercel.svg" height="32" width="32" alt="" />
+        <h2 className="text-center text-xl py-8 font-bold">
+          {isLogin ? "Iniciar Sesion" : "Registrarse"}
+        </h2>
+        {message && <p className="text-center text-sm">{message}</p>} {/* Mensaje centralizado y pequeño */}
+        <div className="flex flex-col gap-4">
+          {!isLogin && (
+            <input
+              className="rounded-xl border-1 p-2 border-purple-800"
+              type="text"
+              placeholder="Nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              required
+            />
+          )}
+          <input
+            className="rounded-xl border-1 p-2 border-purple-800"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            className="rounded-xl border-1 p-2 border-purple-800"
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <button className="py-4" onClick={handleAuth} disabled={loading}>
+          {loading ? "Cargando..." : isLogin ? "Iniciar" : "Crear Cuenta"}
+        </button>
 
-      <button onClick={handleAuth} disabled={loading}>
-        {loading ? "Cargando..." : isLogin ? "Entrar" : "Crear Cuenta"}
-      </button>
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+        >
+          {loading ? "Cargando..." : "Iniciar con Google"}
+        </button>
 
-      <button
-        onClick={handleGoogleLogin}
-        disabled={loading}
-        style={{ backgroundColor: "#DB4437" }}
-      >
-        {loading ? "Cargando..." : "Entrar con Google"}
-      </button>
-
-      <p
-        onClick={() => setIsLogin(!isLogin)}
-        style={{ cursor: "pointer", marginTop: "15px" }}
-      >
-        {isLogin
-          ? "¿No tienes cuenta? Regístrate aquí"
-          : "¿Ya tienes cuenta? Inicia Sesión"}
-      </p>
+        <p
+          onClick={() => setIsLogin(!isLogin)}
+          className="cursor-pointer py-8 text-center"
+        >
+          {isLogin
+            ? "¿No tienes cuenta? Regístrate aquí"
+            : "¿Ya tienes cuenta? Inicia Sesión"}
+        </p>
+      </div>
     </div>
   );
 }

@@ -5,4 +5,5 @@ export interface PostalData {
 	num_visitas: number
 	zona_ser: boolean
 	tarifa: number
+	distancia_km: number
 }
