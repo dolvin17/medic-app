@@ -166,7 +166,7 @@ export default function DashboardPage() {
       <Navigation />
       <div className="p-6 text-white bg-gray-900 min-h-screen">
         <h1 className="text-3xl font-bold mb-4">
-          Bienvenido, {perfil.nombre} 👋
+          Lindo día, {perfil.nombre} 🫀
         </h1>
         <button
           onClick={handleLogout}
