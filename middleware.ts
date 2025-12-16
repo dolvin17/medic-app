@@ -1,31 +1,58 @@
 // middleware.ts
-import { NextResponse, type NextRequest } from 'next/server'
 
-// Importa el cliente de Supabase para SSR/Middleware
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs' 
+// 💡 AHORA IMPORTAMOS createServerClient desde @supabase/ssr
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  const res = NextResponse.next();
   
-  // 1. Crea el cliente con la Request y Response
-  const supabase = createMiddlewareClient({ req, res })
+  // La función createServerClient de @supabase/ssr usa un objeto "cookies"
+  // para leer y escribir las cookies.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name) => req.cookies.get(name)?.value,
+        set: (name, value, options) => {
+          req.cookies.set({ name, value, ...options });
+          res.cookies.set({ name, value, ...options });
+        },
+        remove: (name, options) => {
+          req.cookies.set({ name, value: '', ...options });
+          res.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
 
-  // 2. tengo la sesión del usuario
+  // 1. Obtener la sesión actual
+  // Nota: Esto disparará una actualización de cookies si es necesario
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
 
-  const protectedRoutes = ['/dashboard']
-
-  // 3. Lógica de protección
-  if (protectedRoutes.includes(req.nextUrl.pathname) && !session) {
-    // Si la ruta es protegida y no hay sesión, redirige a login
-    return NextResponse.redirect(new URL('/login', req.url))
+  // 2. Definir las rutas que SÓLO requieren autenticación
+  if (req.nextUrl.pathname.startsWith('/dashboard')) {
+    if (!session) {
+      // Si no hay sesión, redirigir al login
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
   }
 
-  return res
+  // 3. Definir las rutas que NO requieren autenticación (Login/Registro)
+  if (req.nextUrl.pathname === '/login' || req.nextUrl.pathname === '/registro') {
+    if (session) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+  }
+
+  return res;
 }
-// 4. Define qué rutas deben pasar por este middleware
+
+// 4. Especificar qué rutas debe "interceptar" este middleware
 export const config = {
-  matcher: ['/', '/dashboard', '/login'], // Incluye las rutas relevantes
-}
+  matcher: ['/dashboard/:path*', '/login', '/registro'],
+};
