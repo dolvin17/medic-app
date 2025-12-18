@@ -1,12 +1,9 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Navigation from "@/components/navigation/Navigation";
-
-// USANDO TUS TIPOS EXISTENTES
 import { PerfilData } from "@/types/auth";
 import { UserStats } from "@/types/userStats";
 import { VisitaLogData } from "@/types/visitLogData";
@@ -144,12 +141,12 @@ export default function DashboardPage() {
   // Clases de Tailwind para los botones de filtro
   const getButtonClass = (period: FilterPeriod) => {
     const base =
-      "px-4 py-2 mr-3 rounded-lg border-2 transition duration-200 ease-in-out font-semibold";
-    return period === filterPeriod
-      ? `${base} bg-purple-600 text-white border-purple-700 hover:bg-purple-700` // Activo
-      : `${base} bg-gray-600 text-white border-gray-700 hover:bg-gray-700`; // Inactivo
-  };
+      "px-4 py-2 mr-2 rounded-md text-sm font-medium transition-all duration-200 ease-in-out border";
 
+    return period === filterPeriod
+      ? `${base} bg-purple-300 text-black border-white hover:bg-gray-200` // Activo (Contraste alto)
+      : `${base} bg-transparent text-gray-400 border-white/[0.1] hover:border-white/[0.3] hover:text-white`; // Inactivo (Sutil)
+  };
   // Función de formateo de fecha
   const formatLogDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-ES", {
@@ -161,70 +158,84 @@ export default function DashboardPage() {
     });
   };
 
+  const saludos = [
+    "Buenos días, mi lugar seguro",
+    "Buenos días, gracias por existir",
+    "Buenos días, el sol llegó tarde porque tú brillabas más",
+    "Amanecí agradeciendo que existas. Buenos días",
+    "Que tu mañana sea ligera. Buenos días, amor",
+    "Buenos días, mi persona favorita",
+    "Buenos días, mi solcito",
+    "Hoy también amanecí contigo en mi corazón",
+    "Buenos días, gracias por existir",
+  ];
+  const diaDelMes = new Date().getDate();
+  const saludoDelDia = saludos[(diaDelMes - 1) % saludos.length];
   return (
     <>
       <Navigation />
-      <div className="p-6 text-white bg-gray-900 min-h-screen">
-        <h1 className="text-3xl font-bold mb-4">
-          Lindo día, {perfil.nombre} 🫀
-        </h1>
-        <button
-          onClick={handleLogout}
-          className="mt-2 bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
-        >
-          Cerrar Sesión
-        </button>
-
+      <div className="p-3 text-white bg-gray-900 min-h-screen">
+        <div className="mb-3">
+          <p className="text-sm text-gray-500 mt-1">
+            {new Date().toLocaleDateString("es-ES", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
+          <h1 className="text-base italic py-4 text-white tracking-tight">
+            {saludoDelDia}{" "}
+            <span className="text-purple-400">{perfil.nombre}</span> 🫀
+          </h1>
+        </div>
         {/* SECCIÓN DE REGISTRO */}
-        <div className="mt-8 pt-5 border-t border-gray-700">
-          <h2 className="text-2xl font-semibold mb-4">
-            Registrar Nueva Visita
+        <div className="pt-4 border-t border-white/[0.08]">
+          <h2 className="text-sm font-medium text-gray-400 mb-4 tracking-tight">
+            Registrar nueva visita {"  "} ✍🏽
           </h2>
-          <div className="flex items-center gap-4">
+          <div className="flex sm:flex-row items-stretch gap-3">
             <input
               type="text"
-              placeholder="Introduce Código Postal (ej: 28001)"
+              placeholder="Introduce CP (ej. 28221)"
               value={cpInput}
               onChange={(e) => setCpInput(e.target.value)}
-              className="p-3 bg-gray-800 border border-purple-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 flex-grow"
+              className="flex-grow px-4 py-2.5 bg-[#0a0a0a] border border-white/[0.1] rounded-lg text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-white/[0.3] focus:ring-1 focus:ring-white/[0.3]"
             />
             <button
               onClick={handleRecordVisit}
-              className="py-3 px-6 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-lg transition duration-200 whitespace-nowrap"
+              className="px-6 border-white border-1 bg-purple-300 text-black text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors duration-200 whitespace-nowrap"
             >
-              REGISTRAR
+              Registrar
             </button>
           </div>
         </div>
 
         {/* TABLA 2: RESUMEN MENSUAL */}
-        <div className="mt-10 pt-5 border-t border-gray-700">
-          <h2 className="text-xl font-semibold mb-4">
-            💰 Total Generado en el Mes Actual
-          </h2>
+        <div className="mt-5 pt-4 border-t border-gray-700">
+          <h2 className="text-base text-gray-400  mb-4">💰 Total</h2>
           <div className="overflow-x-auto">
-            <table className="min-w-full table-auto border border-gray-700">
+            <table className="min-w-full text-sm text-left border-separate border-spacing-0 border border-white/[0.08] rounded-xl overflow-hidden bg-[#0a0a0a]">
               <thead>
-                <tr className="bg-gray-700">
-                  <th className="border border-gray-600 p-3 text-left">
+                <tr className="bg-white/[0.02]">
+                  <th className="px-4 py-3 font-medium text-gray-400 border-b border-white/[0.08]">
                     Periodo
                   </th>
-                  <th className="border border-gray-600 p-3 text-left">
+                  <th className="px-4 py-3 font-medium text-gray-400 border-b border-white/[0.08]">
                     Total Generado
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                <tr className="bg-gray-800 hover:bg-gray-700">
-                  <td className="border border-gray-600 p-3">
-                    Mes en Curso (
-                    {new Date().toLocaleDateString("es-ES", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                    )
+              <tbody className="divide-y divide-white/[0.08]">
+                <tr className="group hover:bg-white/[0.04] transition-colors">
+                  <td className="px-4 py-4 text-gray-300">
+                    <span className="capitalize">
+                      {new Date().toLocaleDateString("es-ES", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
                   </td>
-                  <td className="border border-gray-600 p-3 font-bold text-green-400">
+                  <td className="px-4 py-4  text-green-400 tracking-tight">
                     {euroFormatter.format(stats?.money_month || 0)}
                   </td>
                 </tr>
@@ -232,15 +243,18 @@ export default function DashboardPage() {
             </table>
           </div>
         </div>
-
         {/* TABLA 1: DETALLE DE VISITAS CON FILTROS */}
-        <div className="mt-10 pt-5 border-t border-gray-700">
-          <h2 className="text-xl font-semibold mb-4">
-            Historial Detallado de Visitas ({filterPeriod.toUpperCase()})
+        <div className="mt-8 pt-4 border-t border-white/[0.08]">
+          <h2 className="text-sm font-medium text-gray-400 mb-6 tracking-tight">
+            Historial de visitas (
+            <span className="text-purple-200 text-xs">
+              {filterPeriod.toUpperCase()}
+            </span>
+            )
           </h2>
 
           {/* BOTONES DE FILTRO */}
-          <div className="mb-4 flex flex-wrap">
+          <div className="mb-6 flex flex-wrap gap-1">
             <button
               onClick={() => setFilterPeriod("month")}
               className={getButtonClass("month")}
@@ -262,42 +276,47 @@ export default function DashboardPage() {
           </div>
 
           {filteredLogs.length === 0 ? (
-            <p className="text-yellow-500">
-              No hay visitas registradas para el periodo seleccionado (
-              {filterPeriod.toUpperCase()}).
-            </p>
+            <div className="p-8 rounded-xl border border-dashed border-white/[0.1] text-center">
+              <p className="text-sm text-gray-500">
+                No hay visitas registradas para el periodo seleccionado (
+                {filterPeriod.toLowerCase()}).
+              </p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border border-gray-700">
+            <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a0a0a]">
+              <table className="min-w-full text-sm text-left border-separate border-spacing-0">
                 <thead>
-                  <tr className="bg-gray-700">
-                    <th className="border border-gray-600 p-3 text-left w-1/6">
+                  <tr className="bg-white/[0.02]">
+                    <th className="px-4 py-3 font-medium text-gray-400 border-b border-white/[0.08] w-1/6">
                       CP
                     </th>
-                    <th className="border border-gray-600 p-3 text-left w-2/5">
+                    <th className="px-4 py-3 font-medium text-gray-400 border-b border-white/[0.08] w-2/5">
                       Barrio / Municipio
                     </th>
-                    <th className="border border-gray-600 p-3 text-left w-1/4">
+                    <th className="px-4 py-3 font-medium text-gray-400 border-b border-white/[0.08] w-1/4">
                       Fecha y Hora
                     </th>
-                    <th className="border border-gray-600 p-3 text-left w-1/6">
-                      Coste (€)
+                    <th className="px-4 py-3 font-medium text-gray-400 border-b border-white/[0.08] w-1/6">
+                      Coste
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-white/[0.08]">
                   {filteredLogs.map((log, index) => (
-                    <tr key={index} className="bg-gray-800 hover:bg-gray-700">
-                      <td className="border border-gray-600 p-3 text-purple-400">
+                    <tr
+                      key={index}
+                      className="group hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="px-4 py-4 text-purple-400 group-hover:text-white transition-colors">
                         {log.cp.codigo_postal}
                       </td>
-                      <td className="border border-gray-600 p-3">
+                      <td className="pl-4 py-4 text-gray-300">
                         {log.cp.nombre_barrio}
                       </td>
-                      <td className="border border-gray-600 p-3">
+                      <td className=" py-4 text-gray-500 text-xs tabular-nums">
                         {formatLogDate(log.created_at)}
                       </td>
-                      <td className="border border-gray-600 p-3 font-bold text-green-500">
+                      <td className="px-4 py-4  text-green-400 tracking-tight">
                         {euroFormatter.format(parseFloat(log.monto_generado))}
                       </td>
                     </tr>
