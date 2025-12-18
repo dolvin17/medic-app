@@ -75,78 +75,87 @@ export default function Navigation() {
   const isLogged = !!userProfile;
 
   return (
-    <div className="relative">
-      {/* BARRA SUPERIOR (HEADER) */}
-      <div className="flex py-4 items-center justify-between gap-2 border-b border-white px-4">
-        {/* Nombre del Usuario / Icono */}
-        <div className="flex gap-4 items-center">
-          <FaUserDoctor className="text-2xl" />
-          <p className="font-bold">
-            {isLoading ? "Cargando..." : `Dr. ${displayName}`}
-          </p>
-        </div>
-
-        {/* Botón de Menú de Hamburguesa */}
-        <ImMenu
-          className="text-2xl cursor-pointer"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        />
+<div className="relative z-50">
+  {/* BARRA SUPERIOR (HEADER) */}
+  <div className="flex py-3 items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0a0a0a]/80 backdrop-blur-md px-6">
+    {/* Nombre del Usuario / Icono */}
+    <div className="flex gap-3 items-center">
+      <div className="w-8 h-8 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center">
+        <FaUserDoctor className="text-sm text-gray-400" />
       </div>
+      <p className="text-sm font-medium tracking-tight text-white">
+        {isLoading ? (
+          <span className="text-gray-500 animate-pulse">Cargando...</span>
+        ) : (
+          `Dra. ${displayName}`
+        )}
+      </p>
+    </div>
 
-      {/* MENÚ DESPLEGABLE (HAMBURGER MENU) */}
-      {isMenuOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-md shadow-lg z-10 border border-gray-700">
-          <div className="py-1">
+    {/* Botón de Menú de Hamburguesa */}
+    <button 
+      onClick={() => setIsMenuOpen(!isMenuOpen)}
+      className="p-2 rounded-md hover:bg-white/[0.05] transition-colors outline-none"
+    >
+      <ImMenu className="text-xl text-gray-400 hover:text-white transition-colors" />
+    </button>
+  </div>
 
-            {/* AÑADIDO: BOTÓN DE INICIO */}
-            <Link href="/" legacyBehavior>
+  {/* MENÚ DESPLEGABLE (HAMBURGER MENU) */}
+  {isMenuOpen && (
+    <div className="absolute right-4 mt-2 w-56 bg-[#0a0a0a] rounded-xl shadow-2xl z-[60] border border-white/[0.08] overflow-hidden backdrop-blur-xl">
+      <div className="flex flex-col p-1">
+        {/* BOTÓN DE INICIO */}
+        <Link href="/" legacyBehavior>
+          <a
+            className="flex items-center px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <span className="mr-2">🏠</span> Inicio
+          </a>
+        </Link>
+
+        <div className="h-[1px] bg-white/[0.08] my-1" />
+
+        {/* 1. Enlaces para Usuarios Logueados */}
+        {isLogged ? (
+          <>
+            {loggedInNavItems.map((item) => (
+              <Link key={item.name} href={item.href} legacyBehavior>
                 <a
-                    className="block px-4 py-2 text-sm text-white font-bold hover:bg-purple-700 border-b border-gray-700"
-                    onClick={() => setIsMenuOpen(false)}
-                >
-                    🏠 Inicio
-                </a>
-            </Link>
-            
-            {/* 1. Enlaces para Usuarios Logueados */}
-            {isLogged ? (
-              <>
-                {loggedInNavItems.map((item) => (
-                  <Link key={item.name} href={item.href} legacyBehavior>
-                    <a
-                      className="block px-4 py-2 text-sm text-white hover:bg-purple-700"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      {item.name}
-                    </a>
-                  </Link>
-                ))}
-
-                {/* Botón de Cerrar Sesión */}
-                <div className="border-t border-gray-700 mt-1 pt-1">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-purple-700"
-                    disabled={isLoading}
-                  >
-                    Cerrar Sesión
-                  </button>
-                </div>
-              </>
-            ) : (
-              // 2. Enlace para Usuarios NO Logueados
-              <Link href="/login" legacyBehavior>
-                <a
-                  className="block px-4 py-2 text-sm text-white hover:bg-purple-700"
+                  className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Iniciar Sesión
+                  {item.name}
                 </a>
               </Link>
-            )}
-          </div>
-        </div>
-      )}
+            ))}
+
+            {/* Botón de Cerrar Sesión */}
+            <div className="mt-1 pt-1 border-t border-white/[0.08]">
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-3 py-2 text-sm text-red-500/80 hover:text-red-500 hover:bg-red-500/[0.05] rounded-lg transition-all"
+                disabled={isLoading}
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          </>
+        ) : (
+          /* 2. Enlace para Usuarios NO Logueados */
+          <Link href="/login" legacyBehavior>
+            <a
+              className="block px-3 py-2 text-sm font-medium text-white hover:bg-white/[0.05] rounded-lg transition-all"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Iniciar Sesión
+            </a>
+          </Link>
+        )}
+      </div>
     </div>
+  )}
+</div>
   );
 }
