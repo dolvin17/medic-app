@@ -53,8 +53,8 @@ export default function Regist() {
           
           {/* TÍTULO Y DESCRIPCIÓN */}
           <header className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-white">
-              Registrar Visita
+            <h1 className="text-base font-semibold tracking-tight text-white">
+              Registrar visita
             </h1>
             <p className="text-sm text-gray-500">
               Introduce el código postal para calcular la tarifa automáticamente.
@@ -75,7 +75,7 @@ export default function Regist() {
               <button 
                 onClick={handleRecordVisit}
                 disabled={loading || !cpInput.trim()}
-                className="px-8 py-3 bg-white text-black text-sm font-medium rounded-xl hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                className="px-8 py-3 bg-purple-300 text-black text-sm font-medium rounded-xl hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
                 {loading ? 'Procesando...' : 'Registrar'}
               </button>
@@ -100,7 +100,7 @@ export default function Regist() {
               <div className="space-y-1">
                 <p className="text-xs font-medium text-gray-300 italic">Tip de eficiencia</p>
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  Para registrar pluses o servicios especiales, introduce el código corto definido en tu base de datos (ej. Para plus nocturno introduce PLUS).
+                  Para registrar pluses o servicios especiales, introduce el código corto definido (ej. Para plus nocturno introduce NOCHE).
                 </p>
               </div>
             </div>

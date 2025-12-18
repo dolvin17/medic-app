@@ -8,6 +8,7 @@ import { PerfilData } from "@/types/auth";
 import { UserStats } from "@/types/userStats";
 import { VisitaLogData } from "@/types/visitLogData";
 import { getUserStats, recordVisit } from "@/lib/visits";
+import TargetProgress from "./TargetProgress";
 
 // Formateador de moneda Euro
 const euroFormatter = new Intl.NumberFormat("es-ES", {
@@ -159,9 +160,9 @@ export default function DashboardPage() {
   };
 
   const saludos = [
-    "Buenos días, mi lugar seguro",
+    "Buenos días, el sol hoy salió tarde porque tú brillabas más,",
+	  "Buenos días, mi lugar seguro",
     "Buenos días, gracias por existir",
-    "Buenos días, el sol llegó tarde porque tú brillabas más",
     "Amanecí agradeciendo que existas. Buenos días",
     "Que tu mañana sea ligera. Buenos días, amor",
     "Buenos días, mi persona favorita",
@@ -188,6 +189,10 @@ export default function DashboardPage() {
             <span className="text-purple-400">{perfil.nombre}</span> 🫀
           </h1>
         </div>
+		<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+  <TargetProgress stats={stats} />
+  {/* Aquí podrías poner otra tarjeta con el saludo o resumen */}
+</div>
         {/* SECCIÓN DE REGISTRO */}
         <div className="pt-4 border-t border-white/[0.08]">
           <h2 className="text-sm font-medium text-gray-400 mb-4 tracking-tight">
