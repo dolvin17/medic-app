@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Medic App",
   description: "By Karol with 💜",
+  icons: {
+    icon: "/caduceo.svg", // Ruta relativa a la carpeta public o app
+    shortcut: "/caduceo.svg",
+    apple: "/caduceo.svg",
+  },
 };
 
 export default function RootLayout({

@@ -76,7 +76,7 @@ export default function DieselManager() {
       <div className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] space-y-6 shadow-xl">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-gray-400 uppercase tracking-widest">
-            Registrar Diesel
+            Diesel
           </h2>
           {isSaving && (
             <span className="text-[10px] text-purple-400 animate-pulse uppercase">
