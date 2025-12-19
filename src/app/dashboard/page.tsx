@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cpInput, setCpInput] = useState("");
+  const [selectedDate, setSelectedDate] = useState<string>(
+  new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD para el input
+);
 
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("month");
 
@@ -93,6 +96,7 @@ export default function DashboardPage() {
 
     const now = new Date();
     let startDate: Date;
+	
 
     switch (filterPeriod) {
       case "day":
@@ -109,6 +113,13 @@ export default function DashboardPage() {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
     }
+
+	if (filterPeriod === "day") {
+    return logs.filter((log) => {
+      const logDate = new Date(log.created_at).toISOString().split('T')[0];
+      return logDate === selectedDate;
+    });
+  }
 
     const startTime = startDate.getTime();
 
@@ -214,6 +225,7 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+		
 
         {/* TABLA 2: RESUMEN MENSUAL */}
         <div className="mt-5 pt-4 border-t border-gray-700">
@@ -278,7 +290,19 @@ export default function DashboardPage() {
             >
               Diario
             </button>
+			{filterPeriod === 'day' && (
+    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 transition-all">
+      <span className="text-[10px] text-gray-500 uppercase font-medium">Ver día:</span>
+      <input 
+        type="date"
+        value={selectedDate}
+        onChange={(e) => setSelectedDate(e.target.value)}
+        className="bg-white/[0.03] border border-white/[0.1] rounded-md px-2 py-1.5 text-xs text-white outline-none focus:border-purple-500/50 transition-all [color-scheme:dark]"
+      />
+    </div>
+  )}
           </div>
+		  
 
           {filteredLogs.length === 0 ? (
             <div className="p-8 rounded-xl border border-dashed border-white/[0.1] text-center">
