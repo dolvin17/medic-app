@@ -173,12 +173,12 @@ export default function DashboardPage() {
   const saludos = [
     "Buenos días, el sol hoy salió tarde porque tú brillabas más,",
 	  "Buenos días, mi lugar seguro",
+	  "Hoy también amanecí contigo en mi corazón",
     "Buenos días, gracias por existir",
     "Amanecí agradeciendo que existas. Buenos días",
     "Que tu mañana sea ligera. Buenos días, amor",
     "Buenos días, mi persona favorita",
     "Buenos días, mi solcito",
-    "Hoy también amanecí contigo en mi corazón",
     "Buenos días, gracias por existir",
   ];
   const diaDelMes = new Date().getDate();
