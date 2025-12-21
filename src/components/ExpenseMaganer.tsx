@@ -193,7 +193,7 @@ export default function ExpenseManager() {
             <option value="Otros">Otros</option>
             <option value="Material">Material</option>
             <option value="Coche">Coche</option>
-            <option value="Gestoría">Gestoría</option>
+            <option value="Aparcamiento">Telpark</option>
           </select>
         </div>
         <button
