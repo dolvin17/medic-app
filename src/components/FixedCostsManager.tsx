@@ -95,10 +95,11 @@ export default function FixedExpensesTable() {
       {/* CABECERA */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
+        
+          <p className="text-base uppercase  text-white">Visualización de Gastos</p>
+		    <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
             Fijos
           </h2>
-          <p className="text-base  text-white">Visualización de Gastos</p>
         </div>
         <span className="text-[10px] font-bold text-purple-400 tracking-widest bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 capitalize">
           {currentMonth}

@@ -101,10 +101,11 @@ export default function ExpenseManager() {
       {/* CABECERA Y FILTROS */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
+          
+          <p className="text-base uppercase text-white">Visualización de Gastos</p>
+		  <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
             Variables
           </h2>
-          <p className="text-base  text-white">Visualización de Gastos</p>
         </div>
         <div className="flex gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/[0.08]">
           {[9, 10, 11].map((m) => (
@@ -155,7 +156,7 @@ export default function ExpenseManager() {
         </div>
         <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 flex flex-col justify-center items-center text-center shadow-lg">
           <h3 className="text-[10px] font-bold text-red-400/80 uppercase tracking-widest mb-1">
-            Gasto del Mes
+            Total variables
           </h3>
           <span className="text-3xl font-mono font-bold text-red-400">
             -{totalVariables}€
