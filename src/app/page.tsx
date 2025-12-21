@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getUserStats } from "@/lib/visits"; // Tu función que ya calcula el total
 import NetBalanceTable from "@/components/NetBalanceTable";
+import Header from "@/components/Header";
 import Navigation from "@/components/navigation/Navigation";
 
 export default function LoginPage() {
@@ -32,6 +33,7 @@ export default function LoginPage() {
   return (
     <>
       <Navigation />
+	  <Header />
       {!loading ? (
         <NetBalanceTable income={income} />
       ) : (

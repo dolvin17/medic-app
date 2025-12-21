@@ -14,8 +14,8 @@ export default function Header() {
 					  />
 					</div>
 					<div className="text-center">
-					  <h1 className="text-xs tracking-tight text-white">HECHO CON MUCHO AMOR Y CAFEÍNA</h1>
-					  <p className="text-[10px] text-gray-500 uppercase tracking-[0.3em] font-medium">Panel de Registro</p>
+					  <h1 className="text-xs tracking-tight text-white">HECHO CON MUCHO AMOR</h1>
+					  <p className="text-[10px] text-gray-500 uppercase tracking-[0.3em] font-medium">PANEL DE VISUALIZACIÓN</p>
 					</div>
 				  </header>
 		</>

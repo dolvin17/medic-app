@@ -69,7 +69,7 @@ export default function DieselManager() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-700">
+    <div className="flex flex-col gap-6 py-8 w-full animate-in fade-in duration-700">
       
       {/* SECCIÓN A: FORMULARIO */}
       <div className="p-2 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] space-y-6 shadow-xl relative overflow-hidden">

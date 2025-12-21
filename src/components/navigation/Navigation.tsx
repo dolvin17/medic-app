@@ -1,161 +1,135 @@
-// src/components/navigation/Navigation.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { FaUserDoctor } from "react-icons/fa6";
-import { ImMenu } from "react-icons/im";
+import { usePathname } from "next/navigation";
+import { FaUserDoctor, FaArrowRightFromBracket } from "react-icons/fa6";
+import { HiOutlineSquares2X2, HiOutlineClock, HiOutlineBanknotes, HiChevronDown } from "react-icons/hi2";
 import { supabase } from "@/lib/supabaseClient";
 
-// Definiciones de tipos para el usuario y el menú
 interface UserProfile {
   nombre: string;
   email: string;
 }
 
-interface NavItem {
-  name: string;
-  href: string;
-}
-
-// Enlaces del menú (para usuarios logueados)
-const loggedInNavItems: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Historial de Visitas", href: "/historial" },
-  { name: "Gestión de Gastos", href: "/gastos" },
+const navItems = [
+  { name: "Dashboard", href: "/dashboard", icon: <HiOutlineSquares2X2 /> },
+  { name: "Gastos", href: "/gastos", icon: <HiOutlineBanknotes /> },
 ];
 
 export default function Navigation() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
 
-  // Función para obtener el perfil y nombre del usuario
   useEffect(() => {
     async function loadProfile() {
-      setIsLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Consultar la tabla 'usuarios' para obtener el nombre
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("usuarios")
-          .select("nombre, email") // Pedimos el nombre y email
+          .select("nombre, email")
           .eq("id", user.id)
           .single();
-
-        if (data) {
-          setUserProfile(data as UserProfile);
-        } else if (error) {
-          console.error("Error al cargar el perfil en navbar:", error.message);
-          // Si el perfil falla, al menos sabemos que el usuario existe
-          setUserProfile({ nombre: "Usuario", email: user.email! });
-        }
+        if (data) setUserProfile(data as UserProfile);
       }
       setIsLoading(false);
     }
     loadProfile();
   }, []);
 
-  // Función de cierre de sesión
   const handleLogout = async () => {
-    setIsLoading(true);
-    const { error } = await supabase.auth.signOut();
-    setIsMenuOpen(false);
-    setUserProfile(null);
-    setIsLoading(false);
-
-    // Opcional: Redirigir a la página de inicio o login
-    // window.location.href = '/login';
+    await supabase.auth.signOut();
+    window.location.href = "/login";
   };
 
-  const displayName = userProfile?.nombre || "Visitante";
-  const isLogged = !!userProfile;
-
   return (
-<div className="relative z-50">
-  {/* BARRA SUPERIOR (HEADER) */}
-  <div className="flex py-3 items-center justify-between gap-2 border-b border-white/[0.08] bg-[#0a0a0a]/80 backdrop-blur-md px-6">
-    {/* Nombre del Usuario / Icono */}
-    <div className="flex gap-3 items-center">
-      <div className="w-8 h-8 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center">
-        <FaUserDoctor className="text-sm text-gray-400" />
-      </div>
-      <p className="text-sm font-medium tracking-tight text-white">
-        {isLoading ? (
-          <span className="text-gray-500 animate-pulse">Cargando...</span>
-        ) : (
-          `Dra. ${displayName}`
-        )}
-      </p>
-    </div>
-
-    {/* Botón de Menú de Hamburguesa */}
-    <button 
-      onClick={() => setIsMenuOpen(!isMenuOpen)}
-      className="p-2 rounded-md hover:bg-white/[0.05] transition-colors outline-none"
-    >
-      <ImMenu className="text-xl text-gray-400 hover:text-white transition-colors" />
-    </button>
-  </div>
-
-  {/* MENÚ DESPLEGABLE (HAMBURGER MENU) */}
-  {isMenuOpen && (
-    <div className="absolute right-4 mt-2 w-56 bg-[#0a0a0a] rounded-xl shadow-2xl z-[60] border border-white/[0.08] overflow-hidden backdrop-blur-xl">
-      <div className="flex flex-col p-1">
-        {/* BOTÓN DE INICIO */}
-        <Link href="/" legacyBehavior>
-          <a
-            className="flex items-center px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <span className="mr-2">🏠</span> Inicio
-          </a>
+    <nav className="sticky top-0 z-[100] w-full border-b border-white/[0.05] bg-[#0a0a0a]/60 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        
+        {/* Lado Izquierdo: Branding/Doctor Status */}
+        <Link href="/dashboard" className="group flex items-center gap-3 transition-opacity hover:opacity-80">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-800/20 border border-purple-500/30 shadow-lg shadow-purple-500/10">
+            <FaUserDoctor className="text-purple-400 text-lg" />
+          </div>
+          <div className="hidden flex-col sm:flex">
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-gray-500">Medical Portal</span>
+            <span className="text-sm font-semibold text-white">
+              {isLoading ? "..." : `Dra. ${userProfile?.nombre?.split(' ')[0] || 'User'}`}
+            </span>
+          </div>
         </Link>
 
-        <div className="h-[1px] bg-white/[0.08] my-1" />
-
-        {/* 1. Enlaces para Usuarios Logueados */}
-        {isLogged ? (
-          <>
-            {loggedInNavItems.map((item) => (
-              <Link key={item.name} href={item.href} legacyBehavior>
-                <a
-                  className="block px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] rounded-lg transition-all"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.name}
-                </a>
-              </Link>
-            ))}
-
-            {/* Botón de Cerrar Sesión */}
-            <div className="mt-1 pt-1 border-t border-white/[0.08]">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-3 py-2 text-sm text-red-500/80 hover:text-red-500 hover:bg-red-500/[0.05] rounded-lg transition-all"
-                disabled={isLoading}
+        {/* Centro: Links (Escritorio) */}
+        <div className="hidden items-center gap-1 md:flex">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+                  isActive 
+                  ? "bg-white/[0.08] text-white shadow-inner border border-white/10" 
+                  : "text-gray-400 hover:text-white hover:bg-white/[0.03]"
+                }`}
               >
-                Cerrar Sesión
-              </button>
+                <span className="text-lg">{item.icon}</span>
+                {item.name}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Lado Derecho: Profile Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="group flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] p-1.5 pr-3 transition-all hover:bg-white/[0.05] hover:border-white/20 active:scale-95"
+          >
+            <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-gray-700 to-gray-500 border border-white/10 flex items-center justify-center text-[10px] font-bold text-white uppercase">
+              {userProfile?.nombre?.charAt(0) || "U"}
             </div>
-          </>
-        ) : (
-          /* 2. Enlace para Usuarios NO Logueados */
-          <Link href="/login" legacyBehavior>
-            <a
-              className="block px-3 py-2 text-sm font-medium text-white hover:bg-white/[0.05] rounded-lg transition-all"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Iniciar Sesión
-            </a>
-          </Link>
-        )}
+            <HiChevronDown className={`text-gray-500 transition-transform duration-300 ${isMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Menú Desplegable con Animación */}
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-3 w-64 origin-top-right rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-2 shadow-2xl ring-1 ring-black ring-opacity-5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-3 py-3 mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Conectada como</p>
+                <p className="text-xs font-medium text-white truncate">{userProfile?.email}</p>
+              </div>
+              
+              <div className="h-[1px] bg-white/[0.05] mx-2 mb-2" />
+
+              <div className="space-y-1">
+                {/* Links para Móvil/Escritorio dentro del menú */}
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-400 transition-colors hover:bg-white/[0.05] hover:text-white"
+                  >
+                    <span className="text-xl opacity-70">{item.icon}</span>
+                    {item.name}
+                  </Link>
+                ))}
+
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/[0.08] hover:text-red-300"
+                >
+                  <FaArrowRightFromBracket className="text-lg opacity-70" />
+                  Cerrar Sesión
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  )}
-</div>
+    </nav>
   );
 }
