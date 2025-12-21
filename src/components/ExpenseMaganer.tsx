@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { VariableExpense } from "@/types/vairableExpense";
+import { FaTrashCan } from "react-icons/fa6";
 import {
   BarChart,
   Bar,
@@ -231,10 +232,12 @@ export default function ExpenseManager() {
                 <td className="px-6 py-4 text-right">
                   <button
                     onClick={() => handleDelete(exp.id)}
-                    className="text-red-500 p-2 hover:bg-red-500/10 rounded-lg"
+                 className="p-2 text-gray-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
                   >
-                    <TrashIcon />
+                   <FaTrashCan size={14} />
                   </button>
+
+				  
                 </td>
               </tr>
             ))}

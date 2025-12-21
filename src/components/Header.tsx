@@ -3,7 +3,7 @@ import Image from "next/image"
 export default function Header() {
 	return (
 		<>
-		  <header className="flex flex-col items-center gap-4 mb-4">
+		  <header className="flex flex-col items-center gap-4 py-4 mb-4">
 					<div className="p-3 rounded-2xl bg-white/[0.03] overflow-hidden border border-white/[0.08] shadow-inner">
 					  <Image 
 						src="/caduceo.svg" 
