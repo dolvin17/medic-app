@@ -9,8 +9,9 @@ import { UserStats } from "@/types/userStats";
 import { VisitaLogData } from "@/types/visitLogData";
 import { getUserStats, recordVisit } from "@/lib/visits";
 import TargetProgress from "./TargetProgress";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-// Formateador de moneda Euro
 const euroFormatter = new Intl.NumberFormat("es-ES", {
   style: "currency",
   currency: "EUR",
@@ -24,25 +25,20 @@ export default function DashboardPage() {
   const [perfil, setPerfil] = useState<PerfilData | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [cpInput, setCpInput] = useState("");
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
-
-  // 💡 RESTAURACIÓN: Array de frases bonitas
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7));
   const [fraseH3, setFraseH3] = useState("");
   
   const frases = useMemo(() => [
     "Que el tráfico sea leve hoy en tus visitas. Conduce con cuidado",
     "Eres una profesional increíble y mi persona favorita. Te quiero",
     "Que hoy tus rutas sean tranquilas y tus pacientes agradecidos",
-     "Eres una mujer increíble con una visión muy clara. Fuerza hoy",
+    "Eres una mujer increíble con una visión muy clara. Fuerza hoy",
     "¡A por la jornada! Nadie cuida los detalles como tú lo haces",
     "Gracias por tu esfuerzo diario. Feliz día",
     "Eres excelente en lo que haces y mi orgullo diario. Disfruta del día",
     "Buenos días. Tu dedicación es la clave de tu éxito futuro.",
-    "Eres una mujer increíble con una visión muy clara. Fuerza hoy",
     "Que hoy encuentres fluidez en la carretera y en la chambita",
   ], []);
 
@@ -53,21 +49,9 @@ export default function DashboardPage() {
   const loadData = async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    const { data: perfilData, error: profileError } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
-    if (profileError) {
-      setError("Error al cargar el perfil.");
-    } else {
+    if (!user) { router.push("/login"); return; }
+    const { data: perfilData } = await supabase.from("usuarios").select("*").eq("id", user.id).single();
+    if (perfilData) {
       setPerfil(perfilData as PerfilData);
       const userStats = await getUserStats(user.id);
       setStats(userStats);
@@ -77,87 +61,52 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadData();
-    // 💡 Selección aleatoria de la frase al cargar
     setFraseH3(frases[Math.floor(Math.random() * frases.length)]);
   }, [router, frases]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterPeriod, selectedDate]);
-
-  const monthlyHistory = useMemo(() => {
-    const logs = stats?.detailed_logs || [];
-    const groups: Record<string, number> = {};
-
-    logs.forEach((log) => {
-      const date = new Date(log.created_at);
-      const monthKey = date.toLocaleDateString("es-ES", {
-        month: "long",
-        year: "numeric",
-      });
-
-      const monto = parseFloat(log.monto_generado);
-      groups[monthKey] = (groups[monthKey] || 0) + monto;
-    });
-
-    return Object.entries(groups).map(([periodo, total]) => ({
-      periodo,
-      total,
-    }));
-  }, [stats]);
-
-  const handleRecordVisit = async () => {
-    if (!perfil?.id) return;
-    if (!cpInput || cpInput.length === 0) {
-      alert("Introduce un Código Postal.");
-      return;
-    }
-
-    const result = await recordVisit(perfil.id, cpInput);
-
-    if (result) {
-      setCpInput("");
-      loadData();
-    } else {
-      alert(`ERROR: El CP ${cpInput} no existe o hubo un error de conexión.`);
-    }
-  };
 
   const filteredLogs = useMemo<VisitaLogData[]>(() => {
     const logs = stats?.detailed_logs || [];
     if (filterPeriod === "all" || logs.length === 0) return logs;
+    return logs.filter((log) => {
+      const logDate = new Date(log.created_at);
+      const logDateISO = logDate.toISOString().split("T")[0];
+      if (filterPeriod === "day") return logDateISO === selectedDate;
+      if (filterPeriod === "week") {
+        const targetDate = new Date(selectedDate);
+        const diffDays = (targetDate.getTime() - logDate.getTime()) / (1000 * 3600 * 24);
+        return diffDays >= 0 && diffDays < 7;
+      }
+      if (filterPeriod === "month") {
+        const [year, month] = selectedMonth.split("-");
+        return logDate.getFullYear() === parseInt(year) && (logDate.getMonth() + 1) === parseInt(month);
+      }
+      return true;
+    });
+  }, [stats, filterPeriod, selectedDate, selectedMonth]);
 
-    const now = new Date();
-    let startDate: Date;
-
-    switch (filterPeriod) {
-      case "day":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case "week":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case "month":
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-    }
-
-    if (filterPeriod === "day") {
-      return logs.filter((log) => {
-        const logDate = new Date(log.created_at).toISOString().split("T")[0];
-        return logDate === selectedDate;
-      });
-    }
-
-    const startTime = startDate.getTime();
-    return logs.filter((log) => new Date(log.created_at).getTime() >= startTime);
-  }, [stats, filterPeriod, selectedDate]);
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Reporte de Visitas - ${perfil?.nombre}`, 14, 15);
+    const tableData = filteredLogs.map(log => [
+      new Date(log.created_at).toLocaleDateString("es-ES"),
+      log.cp.codigo_postal,
+      log.cp.nombre_barrio,
+      `${(log.cp as any).distancia_km || 0} km`,
+      euroFormatter.format(Number((log.cp as any).tarifa || 0)),
+      euroFormatter.format(Number(log.monto_generado))
+    ]);
+    autoTable(doc, {
+      head: [['Fecha', 'CP', 'Municipio', 'Distancia', 'Tarifa', 'Total']],
+      body: tableData,
+      startY: 20,
+      headStyles: { fillColor: [168, 85, 247] }
+    });
+    doc.save(`Visitas_Alix_${selectedMonth}.pdf`);
+  };
 
   const paginatedLogs = useMemo(() => {
     const lastIndex = currentPage * recordsPerPage;
-    const firstIndex = lastIndex - recordsPerPage;
-    return filteredLogs.slice(firstIndex, lastIndex);
+    return filteredLogs.slice(lastIndex - recordsPerPage, lastIndex);
   }, [filteredLogs, currentPage]);
 
   const totalPages = Math.ceil(filteredLogs.length / recordsPerPage);
@@ -165,17 +114,11 @@ export default function DashboardPage() {
   const getButtonClass = (period: FilterPeriod) => {
     const base = "px-4 py-2 mr-2 rounded-md text-sm font-medium transition-all duration-200 border";
     return period === filterPeriod
-      ? `${base} bg-purple-300 text-black border-white hover:bg-gray-200`
-      : `${base} bg-transparent text-gray-400 border-white/[0.1] hover:border-white/[0.3] hover:text-white`;
+      ? `${base} bg-purple-300 text-black border-white`
+      : `${base} bg-transparent text-gray-400 border-white/[0.1]`;
   };
 
-  const formatLogDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-    });
-  };
-
-  if (isLoading) return <div className="p-5 text-white bg-gray-900 min-h-screen animate-pulse">Cargando histórico...</div>;
+  if (isLoading) return <div className="p-5 text-white bg-gray-900 min-h-screen">Cargando...</div>;
 
   return (
     <>
@@ -195,99 +138,70 @@ export default function DashboardPage() {
         </div>
 
         <div className="pt-4 border-t border-white/[0.08]">
-          <h2 className="text-[10px] font-bold text-gray-500 mb-4 uppercase tracking-widest">
-            Registrar nueva visita ✍🏽
-          </h2>
-          <div className="flex sm:flex-row items-stretch gap-3">
+          <h2 className="text-[10px] font-bold text-gray-500 mb-4 uppercase tracking-widest">Nueva visita ✍🏽</h2>
+          <div className="flex gap-3">
             <input
-              type="text" placeholder="Introduce CP" value={cpInput}
+              type="text" placeholder="CP" value={cpInput}
               onChange={(e) => setCpInput(e.target.value)}
-              className="flex-grow px-4 py-2.5 bg-[#0a0a0a] border border-white/[0.1] rounded-lg text-sm text-white placeholder-gray-500 outline-none transition-all focus:border-purple-500/40"
+              className="flex-grow px-4 py-2.5 bg-[#0a0a0a] border border-white/[0.1] rounded-lg text-sm text-white outline-none"
             />
-            <button
-              onClick={handleRecordVisit}
-              className="px-6 border-white border-1 bg-purple-300 text-black text-[10px] font-bold uppercase rounded-lg hover:bg-white transition-all whitespace-nowrap"
-            >
-              Registrar
-            </button>
+            <button onClick={loadData} className="px-6 bg-purple-300 text-black text-[10px] font-bold uppercase rounded-lg">Registrar</button>
           </div>
         </div>
 
-        <div className="mt-5 pt-4 border-t border-gray-700">
-          <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
-            💰 Histórico de Ingresos
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm text-left border-separate border-spacing-0 border border-white/[0.08] rounded-xl overflow-hidden bg-[#0a0a0a]">
+        <div className="mt-12 pt-4 border-t border-white/[0.08]">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+              Visitas ( <span className="text-purple-300">{filterPeriod.toUpperCase()}</span> )
+            </h2>
+            <div className="flex gap-2">
+              <div className="bg-white/[0.03] p-1.5 rounded-xl border border-white/[0.08]">
+                {filterPeriod === "month" ? (
+                  <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="bg-transparent text-[11px] font-bold text-white outline-none [color-scheme:dark]" />
+                ) : (
+                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-[11px] font-bold text-white outline-none [color-scheme:dark]" />
+                )}
+              </div>
+              <button onClick={exportToPDF} className="p-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase">PDF ⬇️</button>
+            </div>
+          </div>
+
+          <div className="mb-6 flex gap-1">
+            {["month", "week", "day"].map((p) => (
+              <button key={p} onClick={() => setFilterPeriod(p as FilterPeriod)} className={getButtonClass(p as FilterPeriod)}>
+                {p === "month" ? "Mes" : p === "week" ? "Semana" : "Día"}
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a0a0a]">
+            <table className="min-w-full text-xs text-left">
               <thead>
-                <tr className="bg-white/[0.02]">
-                  <th className="px-4 py-3 font-medium text-[10px] text-gray-500 uppercase">Periodo</th>
-                  <th className="px-4 py-3 font-medium text-[10px] text-gray-500 uppercase text-right">Total Generado</th>
+                <tr className="bg-white/[0.02] text-[9px] uppercase text-gray-500 tracking-widest">
+                  <th className="px-4 py-3 border-b border-white/[0.08]">Fecha</th>
+                  <th className="px-4 py-3 border-b border-white/[0.08]">Barrio / CP</th>
+                  <th className="px-4 py-3 border-b border-white/[0.08] text-right">Monto / KM</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.08]">
-                {monthlyHistory.map((item, index) => (
-                  <tr key={index} className="group hover:bg-white/[0.04] transition-colors">
-                    <td className="px-4 py-5 text-gray-300 capitalize font-medium">{item.periodo}</td>
-                    <td className="px-4 py-5 text-green-400 font-bold font-mono text-right text-lg">
-                      {euroFormatter.format(item.total)}
+                {paginatedLogs.map((log, index) => (
+                  <tr key={index} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-4 text-gray-500 font-mono align-top">
+                      {new Date(log.created_at).toLocaleDateString("es-ES", { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="text-white font-medium">{log.cp.nombre_barrio}</p>
+                      <p className="text-[10px] text-purple-400 font-mono">{log.cp.codigo_postal}</p>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <p className="text-green-400 font-bold">{euroFormatter.format(Number(log.monto_generado))}</p>
+                      <p className="text-[10px] text-gray-500 font-mono">{(log.cp as any).distancia_km || 0} km</p>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div className="mt-12 pt-4 border-t border-white/[0.08]">
-          <h2 className="text-[10px] font-bold text-gray-500 mb-6 uppercase tracking-widest">
-            Historial de visitas ( <span className="text-purple-300">{filterPeriod.toUpperCase()}</span> )
-          </h2>
-
-          <div className="mb-6 flex flex-wrap gap-1">
-            {["month", "week", "day"].map((p) => (
-              <button key={p} onClick={() => setFilterPeriod(p as FilterPeriod)} className={getButtonClass(p as FilterPeriod)}>
-                {p === "month" ? "Mensual" : p === "week" ? "Semanal" : "Diario"}
-              </button>
-            ))}
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#0a0a0a]">
-            <table className="min-w-full text-xs text-left border-separate border-spacing-0">
-              <thead>
-                <tr className="bg-white/[0.02] text-[9px] uppercase text-gray-500 tracking-widest">
-                  <th className="px-4 py-3 border-b border-white/[0.08]">CP</th>
-                  <th className="px-4 py-3 border-b border-white/[0.08]">Municipio</th>
-                  <th className="px-4 py-3 border-b border-white/[0.08]">Fecha</th>
-                  <th className="px-4 py-3 border-b border-white/[0.08] text-right">Coste</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.08]">
-                {paginatedLogs.map((log, index) => (
-                  <tr key={index} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-4 text-purple-400 font-mono">{log.cp.codigo_postal}</td>
-                    <td className="px-4 py-4 text-gray-300">{log.cp.nombre_barrio}</td>
-                    <td className="px-4 py-4 text-gray-500 italic">{formatLogDate(log.created_at)}</td>
-                    <td className="px-4 py-4 text-green-400 font-bold text-right">{euroFormatter.format(parseFloat(log.monto_generado))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center px-1 mt-4">
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Página {currentPage} de {totalPages}</span>
-              <div className="flex gap-2">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="p-2 border border-white/[0.1] rounded-lg disabled:opacity-20 hover:bg-white/5 transition-all">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                </button>
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="p-2 border border-white/[0.1] rounded-lg disabled:opacity-20 hover:bg-white/5 transition-all">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>

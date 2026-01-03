@@ -4,5 +4,7 @@ export interface VisitaLogData {
     cp: { // La propiedad 'cp' es el objeto anidado del join a codigos_postales
         codigo_postal: string;
         nombre_barrio: string;
+        distancia_km: number | null;
+        tarifa: number | null;
     };
 }

@@ -5,6 +5,7 @@ import { VisitaLogData } from "@/types/visitLogData";
 // ============== 1. REGISTRAR VISITA POR CÓDIGO POSTAL =============
 
 export async function recordVisit(userId: string, codigoPostal: string) {
+    // 💡 Añadimos tarifa en el select para que el log guarde el monto correcto
     const { data: cpData, error: cpError } = await supabase
         .from('codigos_postales')
         .select('id, tarifa')
@@ -26,7 +27,10 @@ export async function recordVisit(userId: string, codigoPostal: string) {
             cp_id: cpId, 
             monto_generado: monto,
         })
-        .select()
+        .select(`
+            *,
+            cp:cp_id (codigo_postal, nombre_barrio, distancia_km, tarifa)
+        `) // 💡 Select detallado para devolver el objeto completo tras insertar
         .single();
 
     if (error) {
@@ -45,8 +49,13 @@ export async function getUserStats(userId: string): Promise<UserStats> {
         .select(`
             monto_generado,
             created_at,
-            cp:cp_id (codigo_postal, nombre_barrio)
-        `)
+            cp:cp_id (
+                codigo_postal, 
+                nombre_barrio, 
+                distancia_km, 
+                tarifa
+            )
+        `) // 💡 CRÍTICO: Añadido distancia_km y tarifa para el Dashboard y PDF
         .eq('user_id', userId); 
 
     if (error || !data) {
@@ -61,6 +70,7 @@ export async function getUserStats(userId: string): Promise<UserStats> {
         };
     }
 
+    // Casteamos los datos para que TypeScript reconozca las nuevas propiedades
     const logs = data as unknown as VisitaLogData[]; 
 
     let total_visits = 0;
@@ -71,20 +81,14 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     
     const now = new Date();
     
-    // --- 💡 LÓGICA DE FILTRADO CALENDARIO (FIX) ---
-    
-    // Inicio de Hoy (00:00:00)
+    // --- 💡 LÓGICA DE PERIODOS ---
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()); 
 
-    // Inicio de la Semana (Lunes actual a las 00:00:00)
-    // Calculamos el lunes de la semana actual
-    const currentDay = now.getDay(); // 0 (Dom) a 6 (Sab)
+    const currentDay = now.getDay(); 
     const diffToMonday = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
     const startOfWeek = new Date(now.getFullYear(), now.getMonth(), diffToMonday);
     startOfWeek.setHours(0, 0, 0, 0);
 
-    // Inicio del Mes (Día 1 del mes actual a las 00:00:00)
-    // Esto garantiza que el contador se resetee el día 1 de cada mes.
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); 
     startOfMonth.setHours(0, 0, 0, 0);
     
@@ -96,28 +100,13 @@ export async function getUserStats(userId: string): Promise<UserStats> {
         const logDate = new Date(log.created_at);
         const cpKey = log.cp.codigo_postal; 
 
-        // Totales históricos
         total_visits++;
         total_money += monto;
 
-        // --- 🎯 FILTRADO POR PERIODOS REALES ---
-        // Hoy
-        if (logDate >= startOfToday) { 
-            money_today += monto; 
-        }
-        
-        // Esta Semana (Lunes a Domingo)
-        if (logDate >= startOfWeek) { 
-            money_week += monto; 
-        }
-        
-        // Este Mes (Día 1 al 31)
-        // Como hoy es 3 de enero, solo entrarán los logs de enero.
-        if (logDate >= startOfMonth) { 
-            money_month += monto; 
-        }
+        if (logDate >= startOfToday) money_today += monto; 
+        if (logDate >= startOfWeek) money_week += monto; 
+        if (logDate >= startOfMonth) money_month += monto; 
 
-        // Acumulación por CP
         if (!cpMap[cpKey]) {
             cpMap[cpKey] = {
                 codigo_postal: log.cp.codigo_postal,
@@ -132,11 +121,13 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     
     return {
         total_visits,
-        total_money: parseFloat(total_money.toFixed(2)),
-        money_today: parseFloat(money_today.toFixed(2)),
-        money_week: parseFloat(money_week.toFixed(2)),
-        money_month: parseFloat(money_month.toFixed(2)),
+        total_money: Number(total_money.toFixed(2)),
+        money_today: Number(money_today.toFixed(2)),
+        money_week: Number(money_week.toFixed(2)),
+        money_month: Number(money_month.toFixed(2)),
         visits_by_cp: Object.values(cpMap),
-        detailed_logs: detailedLogsArray.reverse(), 
+        detailed_logs: detailedLogsArray.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ), 
     } as UserStats;
 }
