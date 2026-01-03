@@ -30,6 +30,22 @@ export default function DashboardPage() {
     new Date().toISOString().split("T")[0]
   );
 
+  // 💡 RESTAURACIÓN: Array de frases bonitas
+  const [fraseH3, setFraseH3] = useState("");
+  
+  const frases = useMemo(() => [
+    "Que el tráfico sea leve hoy en tus visitas. Conduce con cuidado",
+    "Eres una profesional increíble y mi persona favorita. Te quiero",
+    "Que hoy tus rutas sean tranquilas y tus pacientes agradecidos",
+     "Eres una mujer increíble con una visión muy clara. Fuerza hoy",
+    "¡A por la jornada! Nadie cuida los detalles como tú lo haces",
+    "Gracias por tu esfuerzo diario. Feliz día",
+    "Eres excelente en lo que haces y mi orgullo diario. Disfruta del día",
+    "Buenos días. Tu dedicación es la clave de tu éxito futuro.",
+    "Eres una mujer increíble con una visión muy clara. Fuerza hoy",
+    "Que hoy encuentres fluidez en la carretera y en la chambita",
+  ], []);
+
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("month");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
@@ -61,20 +77,20 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadData();
-  }, [router]);
+    // 💡 Selección aleatoria de la frase al cargar
+    setFraseH3(frases[Math.floor(Math.random() * frases.length)]);
+  }, [router, frases]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [filterPeriod, selectedDate]);
 
-  // 💡 NUEVA LÓGICA: Agrupar todos los ingresos de la base de datos por Mes y Año
   const monthlyHistory = useMemo(() => {
     const logs = stats?.detailed_logs || [];
     const groups: Record<string, number> = {};
 
     logs.forEach((log) => {
       const date = new Date(log.created_at);
-      // Creamos una clave única (ej: "enero de 2026")
       const monthKey = date.toLocaleDateString("es-ES", {
         month: "long",
         year: "numeric",
@@ -170,7 +186,7 @@ export default function DashboardPage() {
             {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })}
           </p>
           <h1 className="text-base italic py-4 text-white tracking-tight">
-            Hoy también amanecí contigo en mi corazón <span className="text-purple-400">{perfil?.nombre}</span> 🫀
+            {fraseH3} <span className="text-purple-400">{perfil?.nombre}</span> 🫀
           </h1>
         </div>
 
@@ -178,7 +194,6 @@ export default function DashboardPage() {
           <TargetProgress stats={stats} />
         </div>
 
-        {/* SECCIÓN DE REGISTRO */}
         <div className="pt-4 border-t border-white/[0.08]">
           <h2 className="text-[10px] font-bold text-gray-500 mb-4 uppercase tracking-widest">
             Registrar nueva visita ✍🏽
@@ -198,7 +213,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 💡 TABLA CORREGIDA: HISTORIAL DE INGRESOS POR MES */}
         <div className="mt-5 pt-4 border-t border-gray-700">
           <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">
             💰 Histórico de Ingresos
@@ -225,7 +239,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* HISTORIAL DE VISITAS DETALLADO */}
         <div className="mt-12 pt-4 border-t border-white/[0.08]">
           <h2 className="text-[10px] font-bold text-gray-500 mb-6 uppercase tracking-widest">
             Historial de visitas ( <span className="text-purple-300">{filterPeriod.toUpperCase()}</span> )
@@ -262,7 +275,6 @@ export default function DashboardPage() {
             </table>
           </div>
 
-          {/* CONTROLES DE PAGINACIÓN */}
           {totalPages > 1 && (
             <div className="flex justify-between items-center px-1 mt-4">
               <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Página {currentPage} de {totalPages}</span>
