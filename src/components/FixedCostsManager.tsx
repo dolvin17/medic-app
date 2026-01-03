@@ -6,15 +6,18 @@ import {
   BarChart,
   Bar,
   XAxis,
+  YAxis,
   ResponsiveContainer,
   Cell,
   Tooltip,
+  LabelList,
 } from "recharts";
 
 interface FixedExpense {
   id: string;
   nombre: string;
   monto: number;
+  created_at?: string; 
 }
 
 export default function FixedExpensesTable() {
@@ -23,9 +26,10 @@ export default function FixedExpensesTable() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  const currentMonth = new Intl.DateTimeFormat("es-ES", {
-    month: "long",
-  }).format(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const fetchExpenses = useCallback(async () => {
     const { data } = await supabase
@@ -44,6 +48,21 @@ export default function FixedExpensesTable() {
     () => expenses.reduce((acc, exp) => acc + Number(exp.monto), 0),
     [expenses]
   );
+
+  const monthlyHistoryData = useMemo(() => {
+    const groups: Record<string, number> = {};
+    
+    expenses.forEach(exp => {
+      const d = exp.created_at ? new Date(exp.created_at) : new Date();
+      const label = d.toLocaleDateString("es-ES", { month: "short" });
+      groups[label] = (groups[label] || 0) + Number(exp.monto);
+    });
+
+    return Object.keys(groups).map(key => ({
+      name: key,
+      value: groups[key]
+    }));
+  }, [expenses]);
 
   const handleInputChange = (id: string, value: string) => {
     const valorNum = parseFloat(value) || 0;
@@ -92,27 +111,31 @@ export default function FixedExpensesTable() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 pt-12 border-t border-white/[0.05]">
-      {/* CABECERA */}
       <div className="flex justify-between items-end">
         <div>
-        
-          <p className="text-base uppercase  text-white">Visualización de Gastos</p>
-		    <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
+          <p className="text-base uppercase text-white">Visualización de Gastos</p>
+          <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
             Fijos
           </h2>
         </div>
-        <span className="text-[10px] font-bold text-purple-400 tracking-widest bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 capitalize">
-          {currentMonth}
-        </span>
+        
+        <div className="flex items-center gap-2 bg-white/[0.03] p-2 rounded-xl border border-white/[0.08]">
+          <span className="text-[9px] text-gray-500 uppercase font-bold px-1">Ver Mes:</span>
+          <input 
+            type="month" 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark] uppercase cursor-pointer"
+          />
+        </div>
       </div>
 
-      {/* GRÁFICO Y TOTAL */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48 shadow-2xl">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={expenses}>
+            <BarChart data={monthlyHistoryData} margin={{ top: 25 }}>
               <XAxis
-                dataKey="nombre"
+                dataKey="name"
                 stroke="#4b5563"
                 fontSize={9}
                 tickLine={false}
@@ -127,17 +150,30 @@ export default function FixedExpensesTable() {
                 }}
               />
               <Bar
-                dataKey="monto"
+                dataKey="value"
                 fill="#ffffff"
                 radius={[4, 4, 0, 0]}
                 barSize={25}
-              />
+              >
+                {/* 💡 CORRECCIÓN DE TYPESCRIPT: Cambiamos el tipo de entrada a 'any' o 'string | number' */}
+                <LabelList 
+                  dataKey="value" 
+                  position="top" 
+                  fill="#a855f7" 
+                  fontSize={10} 
+                  formatter={(value: any) => `${Number(value).toFixed(0)}€`}
+                  offset={10}
+                />
+                {monthlyHistoryData.map((_, i) => (
+                  <Cell key={i} fill={i === monthlyHistoryData.length - 1 ? "#a855f7" : "#333"} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] flex flex-col justify-center items-center text-center shadow-lg">
           <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-            Total Fijos
+            Total Fijos {selectedMonth}
           </h3>
           <span className="text-3xl font-mono font-bold text-white">
             {totalFixed}€
@@ -174,7 +210,7 @@ export default function FixedExpensesTable() {
                 key={exp.id}
                 className="hover:bg-white/[0.01] transition-colors"
               >
-                <td className="px-6  text-white/90 font-medium ">
+                <td className="px-6 text-white/90 font-medium ">
                   {exp.nombre}
                 </td>
                 <td className="px-6 py-2 text-right">

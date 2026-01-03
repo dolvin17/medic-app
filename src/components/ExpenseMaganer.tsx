@@ -12,13 +12,19 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
 } from "recharts";
 
 export default function ExpenseManager() {
   const [expenses, setExpenses] = useState<VariableExpense[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  
+  // 1. SELECTOR DE MES DINÁMICO
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const [formData, setFormData] = useState({
     descripcion: "",
@@ -43,26 +49,32 @@ export default function ExpenseManager() {
 
   // FILTRO POR MES
   const filteredExpenses = useMemo(() => {
-    return expenses.filter(
-      (exp) => new Date(exp.fecha).getMonth() === selectedMonth
-    );
+    return expenses.filter((exp) => {
+      const d = new Date(exp.fecha);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return key === selectedMonth;
+    });
   }, [expenses, selectedMonth]);
 
   const totalVariables = useMemo(() => {
     return filteredExpenses.reduce((acc, exp) => acc + Number(exp.monto), 0);
   }, [filteredExpenses]);
 
-  // DATOS PARA EL GRÁFICO
-  const chartData = useMemo(() => {
-    const groups = filteredExpenses.reduce((acc: any, exp) => {
-      acc[exp.categoria] = (acc[exp.categoria] || 0) + Number(exp.monto);
-      return acc;
-    }, {});
-    return Object.keys(groups).map((key) => ({
+  // 2. GRÁFICO DE HISTORIAL MENSUAL
+  const monthlyHistoryData = useMemo(() => {
+    const groups: Record<string, number> = {};
+    
+    expenses.forEach(exp => {
+      const d = new Date(exp.fecha);
+      const label = d.toLocaleDateString("es-ES", { month: "short" });
+      groups[label] = (groups[label] || 0) + Number(exp.monto);
+    });
+
+    return Object.keys(groups).map(key => ({
       name: key,
-      value: groups[key],
-    }));
-  }, [filteredExpenses]);
+      value: groups[key]
+    })).reverse(); 
+  }, [expenses]);
 
   const handleSave = async () => {
     if (!formData.descripcion || !formData.monto) return;
@@ -102,28 +114,20 @@ export default function ExpenseManager() {
       {/* CABECERA Y FILTROS */}
       <div className="flex justify-between items-end">
         <div>
-          
           <p className="text-base uppercase text-white">Visualización de Gastos</p>
-		  <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
+          <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
             Variables
           </h2>
         </div>
-        <div className="flex gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/[0.08]">
-          {[9, 10, 11].map((m) => (
-            <button
-              key={m}
-              onClick={() => setSelectedMonth(m)}
-              className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase transition-all ${
-                selectedMonth === m
-                  ? "bg-white text-black"
-                  : "text-gray-500 hover:text-white"
-              }`}
-            >
-              {new Intl.DateTimeFormat("es-ES", { month: "short" }).format(
-                new Date(2025, m, 1)
-              )}
-            </button>
-          ))}
+        
+        <div className="flex items-center gap-2 bg-white/[0.03] p-2 rounded-xl border border-white/[0.08]">
+          <span className="text-[9px] text-gray-500 uppercase font-bold px-1">Ver Mes:</span>
+          <input 
+            type="month" 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark] uppercase cursor-pointer"
+          />
         </div>
       </div>
 
@@ -131,7 +135,8 @@ export default function ExpenseManager() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48 shadow-2xl">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
+            {/* 💡 Añadimos margen superior para las etiquetas */}
+            <BarChart data={monthlyHistoryData} margin={{ top: 20 }}>
               <XAxis
                 dataKey="name"
                 stroke="#4b5563"
@@ -147,9 +152,18 @@ export default function ExpenseManager() {
                   fontSize: "10px",
                 }}
               />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={i % 2 === 0 ? "#a855f7" : "#6b21a8"} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={25}>
+                {/* 💡 ETIQUETA HORIZONTAL CON TIPADO CORREGIDO */}
+                <LabelList 
+                  dataKey="value" 
+                  position="top" 
+                  fill="#a855f7" 
+                  fontSize={10} 
+                  formatter={(value: any) => `${Number(value).toFixed(0)}€`}
+                  offset={10}
+                />
+                {monthlyHistoryData.map((_, i) => (
+                  <Cell key={i} fill={i === monthlyHistoryData.length - 1 ? "#a855f7" : "#333"} />
                 ))}
               </Bar>
             </BarChart>
@@ -157,10 +171,10 @@ export default function ExpenseManager() {
         </div>
         <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 flex flex-col justify-center items-center text-center shadow-lg">
           <h3 className="text-[10px] font-bold text-red-400/80 uppercase tracking-widest mb-1">
-            Total variables
+            Total {selectedMonth}
           </h3>
           <span className="text-3xl font-mono font-bold text-red-400">
-            -{totalVariables}€
+            -{totalVariables.toFixed(2)}€
           </span>
         </div>
       </div>
@@ -236,8 +250,6 @@ export default function ExpenseManager() {
                   >
                    <FaTrashCan size={14} />
                   </button>
-
-				  
                 </td>
               </tr>
             ))}
@@ -245,25 +257,5 @@ export default function ExpenseManager() {
         </table>
       </div>
     </div>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 6h18" />
-      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-    </svg>
   );
 }
