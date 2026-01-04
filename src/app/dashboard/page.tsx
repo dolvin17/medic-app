@@ -64,6 +64,24 @@ export default function DashboardPage() {
     setFraseH3(frases[Math.floor(Math.random() * frases.length)]);
   }, [router, frases]);
 
+  // 💡 FUNCIÓN CORREGIDA PARA REGISTRAR
+  const handleRecordVisit = async () => {
+    if (!perfil?.id) return;
+    if (!cpInput || cpInput.length === 0) {
+      alert("Introduce un Código Postal.");
+      return;
+    }
+
+    const result = await recordVisit(perfil.id, cpInput);
+
+    if (result) {
+      setCpInput(""); // Limpia el input
+      loadData();     // Recarga las estadísticas para ver el nuevo ingreso
+    } else {
+      alert(`ERROR: El CP ${cpInput} no existe o hubo un error de conexión.`);
+    }
+  };
+
   const filteredLogs = useMemo<VisitaLogData[]>(() => {
     const logs = stats?.detailed_logs || [];
     if (filterPeriod === "all" || logs.length === 0) return logs;
@@ -145,7 +163,8 @@ export default function DashboardPage() {
               onChange={(e) => setCpInput(e.target.value)}
               className="flex-grow px-4 py-2.5 bg-[#0a0a0a] border border-white/[0.1] rounded-lg text-sm text-white outline-none"
             />
-            <button onClick={loadData} className="px-6 bg-purple-300 text-black text-[10px] font-bold uppercase rounded-lg">Registrar</button>
+            {/* 💡 CAMBIO AQUÍ: Llamamos a handleRecordVisit */}
+            <button onClick={handleRecordVisit} className="px-6 bg-purple-300 text-black text-[10px] font-bold uppercase rounded-lg">Registrar</button>
           </div>
         </div>
 
