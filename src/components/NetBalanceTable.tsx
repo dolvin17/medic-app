@@ -31,18 +31,6 @@ export default function NetBalanceTable({ income }: NetBalanceProps) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 1. Diesel
-    const { data: dieselData } = await supabase.from("gastos_gasolina").select("coste").eq("user_id", user.id);
-    const totalD = dieselData?.reduce((acc, curr) => acc + Number(curr.coste), 0) || 0;
-
-    // 2. Variables
-    const { data: variablesData } = await supabase.from("gastos_variables").select("monto").eq("user_id", user.id);
-    const totalV = variablesData?.reduce((acc, curr) => acc + Number(curr.monto), 0) || 0;
-
-    // 3. Fijos
-    const { data: fijosData } = await supabase.from("gastos_fijos").select("monto").eq("user_id", user.id);
-    const totalF = fijosData?.reduce((acc, curr) => acc + Number(curr.monto), 0) || 0;
-
     // 4. Historial de Ingresos para el Gráfico (Aseguramos diciembre)
     const { data: visitsData } = await supabase
       .from("visitas_log")
@@ -60,7 +48,6 @@ export default function NetBalanceTable({ income }: NetBalanceProps) {
       setMonthlyIncome(Object.keys(groups).map(key => ({ name: key, value: groups[key] })));
     }
 
-    setTotals({ diesel: totalD, variables: totalV, fijos: totalF });
     setLoading(false);
   }, []);
 
@@ -69,8 +56,7 @@ export default function NetBalanceTable({ income }: NetBalanceProps) {
   }, [fetchAllTotals]);
 
   const irpf = useMemo(() => income * 0.15, [income]);
-  const totalGastos = useMemo(() => totals.diesel + totals.variables + totals.fijos, [totals]);
-  const netoReal = useMemo(() => income - irpf - totalGastos, [income, irpf, totalGastos]);
+  const netoReal = useMemo(() => income - irpf, [income, irpf]);
 
   if (loading) return (
     <div className="mt-10 h-64 bg-white/[0.02] animate-pulse rounded-3xl border border-white/[0.08] flex items-center justify-center">
@@ -125,15 +111,6 @@ export default function NetBalanceTable({ income }: NetBalanceProps) {
               <td className="px-6 py-5 text-gray-400">Retención IRPF (15%)</td>
               <td className="px-6 py-5 text-right font-mono text-orange-400/80">
                 -{euroFormatter.format(irpf)}
-              </td>
-            </tr>
-            <tr>
-              <td className="px-6 py-5 text-gray-400 flex flex-col">
-                <span>Gastos Operativos</span>
-                <span className="text-[9px] text-gray-600 uppercase tracking-tighter">Diesel + Fijos + Variables</span>
-              </td>
-              <td className="px-6 py-5 text-right font-mono text-red-400/80">
-                -{euroFormatter.format(totalGastos)}
               </td>
             </tr>
             <tr className="bg-purple-500/[0.05] border-t-2 border-purple-500/20">

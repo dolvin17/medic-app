@@ -6,7 +6,6 @@ import {
   BarChart,
   Bar,
   XAxis,
-  YAxis,
   ResponsiveContainer,
   Cell,
   Tooltip,
@@ -17,18 +16,23 @@ interface FixedExpense {
   id: string;
   nombre: string;
   monto: number;
-  created_at?: string; 
+  created_at?: string;
 }
 
 export default function FixedExpensesTable() {
   const [expenses, setExpenses] = useState<FixedExpense[]>([]);
+  // El ingreso comienza como undefined para mostrar el placeholder
+  const [incomeLastMonth, setIncomeLastMonth] = useState<number | "">("");
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
   });
 
   const fetchExpenses = useCallback(async () => {
@@ -44,23 +48,32 @@ export default function FixedExpensesTable() {
     fetchExpenses();
   }, [fetchExpenses]);
 
+  // Cálculo de Gastos Totales
   const totalFixed = useMemo(
     () => expenses.reduce((acc, exp) => acc + Number(exp.monto), 0),
     [expenses]
   );
 
+  // Cálculo del Balance (Ingreso - Gastos)
+  const balance = useMemo(() => {
+    const ingreso = incomeLastMonth === "" ? 0 : incomeLastMonth;
+    return ingreso - totalFixed;
+  }, [incomeLastMonth, totalFixed]);
+
+  // Histórico para el gráfico (Desfase de un mes para visualizar el flujo)
   const monthlyHistoryData = useMemo(() => {
     const groups: Record<string, number> = {};
-    
-    expenses.forEach(exp => {
+    expenses.forEach((exp) => {
       const d = exp.created_at ? new Date(exp.created_at) : new Date();
-      const label = d.toLocaleDateString("es-ES", { month: "short" });
+      const calculationMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const label = calculationMonth.toLocaleDateString("es-ES", {
+        month: "short",
+      });
       groups[label] = (groups[label] || 0) + Number(exp.monto);
     });
-
-    return Object.keys(groups).map(key => ({
+    return Object.keys(groups).map((key) => ({
       name: key,
-      value: groups[key]
+      value: groups[key],
     }));
   }, [expenses]);
 
@@ -91,7 +104,7 @@ export default function FixedExpensesTable() {
   };
 
   const addNewRow = async () => {
-    const nombre = prompt("¿Nombre del nuevo gasto fijo?");
+    const nombre = prompt("¿Nombre del nuevo gasto?");
     if (!nombre) return;
     const {
       data: { user },
@@ -104,101 +117,136 @@ export default function FixedExpensesTable() {
 
   if (loading)
     return (
-      <div className="text-gray-500 text-[10px] animate-pulse p-10 uppercase tracking-widest text-center">
-        Cargando Plantilla...
+      <div className="text-gray-500 text-[10px] p-10 text-center uppercase tracking-widest">
+        Cargando...
       </div>
     );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pt-12 border-t border-white/[0.05]">
-      <div className="flex justify-between items-end">
+    <div className="space-y-6 pt-12 border-t border-white/[0.05]">
+      {/* Estilos para eliminar flechas de los inputs de tipo número */}
+      <style jsx global>{`
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+
+      <div className="flex justify-between items-center">
         <div>
-          <p className="text-base uppercase text-white">Visualización de Gastos</p>
-          <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
-            Fijos
+          <h2 className="text-xl text-white font-bold tracking-tight">
+            Gestión de Presupuesto
           </h2>
+          <p className="text-[10px] text-purple-400 uppercase tracking-[0.2em]">
+            Base de cálculo: Mes Anterior
+          </p>
         </div>
-        
-        <div className="flex items-center gap-2 bg-white/[0.03] p-2 rounded-xl border border-white/[0.08]">
-          <span className="text-[9px] text-gray-500 uppercase font-bold px-1">Ver Mes:</span>
-          <input 
-            type="month" 
+        <div className="bg-white/[0.03] p-2 rounded-xl border border-white/[0.08]">
+          <input
+            type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark] uppercase cursor-pointer"
+            className="bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark] uppercase"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48 shadow-2xl">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyHistoryData} margin={{ top: 25 }}>
-              <XAxis
-                dataKey="name"
-                stroke="#4b5563"
-                fontSize={9}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                cursor={{ fill: "transparent" }}
-                contentStyle={{
-                  backgroundColor: "#0a0a0a",
-                  border: "1px solid #333",
-                  fontSize: "10px",
-                }}
-              />
-              <Bar
-                dataKey="value"
-                fill="#ffffff"
-                radius={[4, 4, 0, 0]}
-                barSize={25}
-              >
-                {/* 💡 CORRECCIÓN DE TYPESCRIPT: Cambiamos el tipo de entrada a 'any' o 'string | number' */}
-                <LabelList 
-                  dataKey="value" 
-                  position="top" 
-                  fill="#a855f7" 
-                  fontSize={10} 
-                  formatter={(value: any) => `${Number(value).toFixed(0)}€`}
-                  offset={10}
-                />
-                {monthlyHistoryData.map((_, i) => (
-                  <Cell key={i} fill={i === monthlyHistoryData.length - 1 ? "#a855f7" : "#333"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] flex flex-col justify-center items-center text-center shadow-lg">
-          <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-            Total Fijos {selectedMonth}
+        {/* INGRESO (Entrada manual) */}
+        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] shadow-lg">
+          <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2">
+            Ingreso Cobrado (Día 1)
           </h3>
-          <span className="text-3xl font-mono font-bold text-white">
-            {totalFixed}€
-          </span>
+          <div className="flex items-center">
+            <input
+              type="number"
+              value={incomeLastMonth}
+              onChange={(e) =>
+                setIncomeLastMonth(
+                  e.target.value === "" ? "" : Number(e.target.value)
+                )
+              }
+              placeholder="0.00"
+              className="text-2xl font-mono font-bold text-green-400 bg-transparent outline-none w-full placeholder:text-gray-700"
+            />
+            <span className="text-green-400 font-bold ml-1">€</span>
+          </div>
+          <p className="text-[9px] text-gray-500 mt-1">
+            Dinero disponible recibido
+          </p>
+        </div>
+
+        {/* GASTOS TOTALES */}
+        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] shadow-lg">
+          <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2">
+            Gastos a descontar
+          </h3>
+          <div className="text-2xl font-mono font-bold text-red-400">
+            -{totalFixed}€
+          </div>
+          <p className="text-[9px] text-gray-500 mt-1">
+            Suma de la tabla inferior
+          </p>
+        </div>
+
+        {/* BALANCE FINAL */}
+        <div className="p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20 shadow-lg">
+          <h3 className="text-[10px] font-bold text-purple-400 uppercase mb-2">
+            Dinero Restante
+          </h3>
+          <div className="text-3xl font-mono font-bold text-white">
+            {balance}€
+          </div>
+          <p className="text-[9px] text-purple-300 mt-1">
+            Lo que queda para el mes
+          </p>
         </div>
       </div>
 
+      {/* GRÁFICO */}
+      <div className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={monthlyHistoryData}>
+            <XAxis
+              dataKey="name"
+              stroke="#4b5563"
+              fontSize={9}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Bar dataKey="value" fill="#333" radius={[4, 4, 0, 0]} barSize={30}>
+              <LabelList
+                dataKey="value"
+                position="top"
+                fill="#a855f7"
+                fontSize={10}
+                formatter={(v: any) => `${v}€`}
+              />
+              {monthlyHistoryData.map((_, i) => (
+                <Cell
+                  key={i}
+                  fill={
+                    i === monthlyHistoryData.length - 1 ? "#a855f7" : "#333"
+                  }
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
       {/* TABLA CHECKLIST */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden shadow-2xl">
-        <style jsx>{`
-          input::-webkit-outer-spin-button,
-          input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-          }
-          input[type="number"] {
-            -moz-appearance: textfield;
-          }
-        `}</style>
-        <div className="p-4 border-b border-white/[0.08] flex justify-between items-center bg-white/[0.01]">
-          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
-            Checklist de Gastos
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden">
+        <div className="p-4 border-b border-white/[0.08] bg-white/[0.01] flex justify-between items-center">
+          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+            Conceptos de Gasto
           </h2>
           {message && (
-            <span className="text-[10px] font-medium text-purple-400">
+            <span className="text-[10px] text-purple-400 font-bold">
               {message}
             </span>
           )}
@@ -206,38 +254,41 @@ export default function FixedExpensesTable() {
         <table className="min-w-full text-xs text-left">
           <tbody className="divide-y divide-white/[0.05]">
             {expenses.map((exp) => (
-              <tr
-                key={exp.id}
-                className="hover:bg-white/[0.01] transition-colors"
-              >
-                <td className="px-6 text-white/90 font-medium ">
+              <tr key={exp.id} className="hover:bg-white/[0.01]">
+                <td className="px-6 py-4 text-white/90 font-medium">
                   {exp.nombre}
                 </td>
                 <td className="px-6 py-2 text-right">
-                  <input
-                    type="number"
-                    value={exp.monto || ""}
-                    onChange={(e) => handleInputChange(exp.id, e.target.value)}
-                    className="w-24 bg-white/[0.03] border border-white/[0.1] rounded-lg px-3 py-2 text-right text-purple-300 font-mono outline-none focus:border-purple-500/40 transition-all"
-                  />
+                  <div className="inline-flex items-center bg-white/[0.03] border border-white/[0.1] rounded-lg px-3 py-2">
+                    <input
+                      type="number"
+                      value={exp.monto || ""}
+                      onChange={(e) =>
+                        handleInputChange(exp.id, e.target.value)
+                      }
+                      placeholder="0"
+                      className="w-20 bg-transparent text-right text-purple-300 font-mono outline-none"
+                    />
+                    <span className="ml-1 text-purple-300/50">€</span>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="p-4 bg-white/[0.01] flex flex-col sm:flex-row gap-3 border-t border-white/[0.08]">
+        <div className="p-4 bg-white/[0.01] flex gap-3 border-t border-white/[0.08]">
           <button
             onClick={addNewRow}
-            className="flex-1 py-3 border border-white/[0.1] text-gray-500 text-[9px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/[0.05] transition-all"
+            className="flex-1 py-3 border border-white/[0.1] text-gray-500 text-[9px] font-bold uppercase rounded-xl hover:bg-white/[0.05] transition-colors"
           >
-            + Añadir Concepto
+            + Añadir Fijo
           </button>
           <button
             onClick={handleSaveAll}
             disabled={isSaving}
-            className="flex-[2] py-3 bg-white text-black text-[9px] font-bold uppercase tracking-widest rounded-xl hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50"
+            className="flex-[2] py-3 bg-white text-black text-[9px] font-bold uppercase rounded-xl hover:bg-gray-200 transition-transform active:scale-95 disabled:opacity-50"
           >
-            {isSaving ? "Guardando..." : "Actualizar Valores Mensuales"}
+            {isSaving ? "Guardando..." : "Actualizar Gastos"}
           </button>
         </div>
       </div>
