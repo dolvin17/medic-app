@@ -39,6 +39,7 @@ export default function FixedExpensesTable() {
     const { data } = await supabase
       .from("gastos_fijos")
       .select("*")
+      .eq("activo", true)
       .order("created_at", { ascending: true });
     if (data) setExpenses(data);
     setLoading(false);
@@ -114,7 +115,40 @@ export default function FixedExpensesTable() {
       .insert({ user_id: user?.id, nombre, monto: 0 });
     fetchExpenses();
   };
+  const deleteExpense = async (id: string) => {
+    if (!confirm("¿Eliminar este gasto?")) return;
 
+    const { error } = await supabase.from("gastos_fijos").delete().eq("id", id);
+
+    if (!error) {
+      setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+      setMessage("🗑️ Eliminado");
+      setTimeout(() => setMessage(""), 3000);
+    } else {
+      setMessage("❌ Error al eliminar");
+    }
+  };
+  const archiveExpense = async (id: string) => {
+    // Preguntamos para evitar errores
+    if (
+      !confirm("¿Ocultar este gasto de la lista? No se borrará del historial.")
+    )
+      return;
+
+    const { error } = await supabase
+      .from("gastos_fijos")
+      .update({ activo: false })
+      .eq("id", id);
+
+    if (!error) {
+      // Lo quitamos del estado local para que desaparezca visualmente
+      setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+      setMessage("📦 Gasto oculto");
+      setTimeout(() => setMessage(""), 3000);
+    } else {
+      setMessage("❌ Error al ocultar");
+    }
+  };
   if (loading)
     return (
       <div className="text-gray-500 text-[10px] p-10 text-center uppercase tracking-widest">
@@ -271,6 +305,13 @@ export default function FixedExpensesTable() {
                     />
                     <span className="ml-1 text-purple-300/50">€</span>
                   </div>
+                  <button
+                    onClick={() => archiveExpense(exp.id)}
+                    className="text-gray-600 hover:text-red-400 p-2 transition-colors"
+                    title="Ocultar gasto"
+                  >
+                    ✕
+                  </button>
                 </td>
               </tr>
             ))}
