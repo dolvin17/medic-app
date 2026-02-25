@@ -36,19 +36,69 @@ export default function FixedExpensesTable() {
   });
 
   const fetchExpenses = useCallback(async () => {
-    const { data } = await supabase
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: expensesData } = await supabase
       .from("gastos_fijos")
       .select("*")
       .eq("activo", true)
       .order("created_at", { ascending: true });
-    if (data) setExpenses(data);
+    if (expensesData) setExpenses(expensesData);
+
+    if (user) {
+      const { data: userData, error } = await supabase
+        .from("usuarios")
+        .select("ingreso_mensual")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (userData) {
+        setIncomeLastMonth(userData.ingreso_mensual || 0);
+      }
+    }
     setLoading(false);
   }, []);
 
+  const handleIncomeSave = async (value: string) => {
+    const valorNum = parseFloat(value) || 0;
+    setIncomeLastMonth(valorNum);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await supabase
+        .from("usuarios")
+        .update({ ingreso_mensual: valorNum })
+        .eq("id", user.id);
+    }
+  };
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
 
+  const saveIncome = async () => {
+    setIsSaving(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { error } = await supabase
+        .from("usuarios")
+        .update({ ingreso_mensual: Number(incomeLastMonth) || 0 })
+        .eq("id", user.id);
+
+      if (!error) {
+        setMessage("✅ Ingreso guardado");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage("❌ Error");
+      }
+    }
+    setIsSaving(false);
+  };
   // Cálculo de Gastos Totales
   const totalFixed = useMemo(
     () => expenses.reduce((acc, exp) => acc + Number(exp.monto), 0),
@@ -193,7 +243,7 @@ export default function FixedExpensesTable() {
         {/* INGRESO (Entrada manual) */}
         <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] shadow-lg">
           <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2">
-            Ingreso Cobrado (Día 1)
+            Ingreso Cobrado (Día 5)
           </h3>
           <div className="flex items-center">
             <input
@@ -209,9 +259,13 @@ export default function FixedExpensesTable() {
             />
             <span className="text-green-400 font-bold ml-1">€</span>
           </div>
-          <p className="text-[9px] text-gray-500 mt-1">
-            Dinero disponible recibido
-          </p>
+          <button
+            onClick={saveIncome}
+            disabled={isSaving}
+            className="mt-4 w-full py-2 bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-bold uppercase rounded-lg hover:bg-green-500/20 transition-colors disabled:opacity-50"
+          >
+            {isSaving ? "Guardando..." : "Actualizar Ingreso Mensual"}
+          </button>
         </div>
 
         {/* GASTOS TOTALES */}
