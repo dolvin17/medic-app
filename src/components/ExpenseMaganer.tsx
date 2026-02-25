@@ -30,12 +30,6 @@ export default function ExpenseManager() {
     )}`;
   });
 
-  const [formData, setFormData] = useState({
-    descripcion: "",
-    monto: "",
-    categoria: "Otros",
-  });
-
   const fetchExpenses = useCallback(async () => {
     setIsFetching(true);
     const { data, error } = await supabase
@@ -55,13 +49,17 @@ export default function ExpenseManager() {
   const filteredExpenses = useMemo(() => {
     return expenses.filter((exp) => {
       if (!exp.created_at) return true;
-      
+
       const dateGasto = new Date(exp.created_at);
       const [yearSel, monthSel] = selectedMonth.split("-").map(Number);
-      
+
       // El gasto aparece si se creó en el mes seleccionado O en cualquier mes anterior
       const dateLimite = new Date(yearSel, monthSel - 1, 1);
-      const dateCreacion = new Date(dateGasto.getFullYear(), dateGasto.getMonth(), 1);
+      const dateCreacion = new Date(
+        dateGasto.getFullYear(),
+        dateGasto.getMonth(),
+        1
+      );
 
       return dateCreacion <= dateLimite;
     });
@@ -70,13 +68,14 @@ export default function ExpenseManager() {
     return filteredExpenses.reduce((acc, exp) => acc + Number(exp.monto), 0);
   }, [filteredExpenses]);
 
- const chartData = useMemo(() => {
-    return filteredExpenses.map((exp) => ({
-      name: exp.nombre,
-      value: Number(exp.monto),
-    }));
+  const chartData = useMemo(() => {
+    return filteredExpenses
+      .map((exp) => ({
+        name: exp.nombre,
+        value: Number(exp.monto),
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [filteredExpenses]);
-
 
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar gasto?")) return;
@@ -96,7 +95,7 @@ export default function ExpenseManager() {
             Visualización de Gastos
           </p>
           <h2 className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.3em]">
-            Variables
+            FIJOS
           </h2>
         </div>
 
@@ -115,44 +114,68 @@ export default function ExpenseManager() {
 
       {/* GRÁFICO Y TOTAL */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48 shadow-2xl">
-          <ResponsiveContainer width="100%" height="100%">
-            {/* CAMBIAMOS monthlyHistoryData por chartData */}
-            <BarChart data={chartData} margin={{ top: 20 }}>
-              <XAxis
-                dataKey="name" // Ahora mostrará el "nombre" del gasto (Alquiler, Luz...)
-                stroke="#4b5563"
-                fontSize={9}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                cursor={{ fill: "transparent" }}
-                contentStyle={{
-                  backgroundColor: "#0a0a0a",
-                  border: "1px solid #333",
-                  fontSize: "10px",
-                }}
-              />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={25}>
-                <LabelList
-                  dataKey="value"
-                  position="top"
-                  fill="#a855f7"
-                  fontSize={10}
-                  formatter={(value: any) => `${Number(value).toFixed(0)}€`}
-                  offset={10}
-                />
-                {/* Usamos chartData para pintar las celdas */}
-                {chartData.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={i % 2 === 0 ? "#a855f7" : "#7c3aed"} // Alterna colores para que se vea mejor
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        {/* CONTENEDOR DEL GRÁFICO CON OVERFLOW */}
+        <div className="md:col-span-2 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-64 overflow-y-auto scrollbar-hide shadow-2xl">
+          {/* Ajustamos la altura del ResponsiveContainer para que sea mayor que el padre y permita scroll si hay muchos gastos */}
+         <ResponsiveContainer
+  width="100%"
+  height={Math.max(180, chartData.length * 40)}
+>
+  <BarChart
+    data={chartData}
+    layout="vertical"
+    margin={{ left: 0, right: 40, top: 10, bottom: 10 }}
+  >
+    {/* DEFINICIÓN DEL GRADIENTE HORIZONTAL */}
+    <defs>
+      <linearGradient id="prideGradientHorizontal" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#FF0000" />
+        <stop offset="20%" stopColor="#FF8E00" />
+        <stop offset="40%" stopColor="#FFFF00" />
+        <stop offset="60%" stopColor="#008E00" />
+        <stop offset="80%" stopColor="#00C0C0" />
+        <stop offset="100%" stopColor="#8E008E" />
+      </linearGradient>
+    </defs>
+
+    <XAxis type="number" hide />
+    <YAxis
+      dataKey="name"
+      type="category"
+      stroke="#9ca3af"
+      fontSize={10}
+      width={80}
+      tickLine={false}
+      axisLine={false}
+    />
+    <Tooltip
+      cursor={{ fill: "white", opacity: 0.05 }}
+      contentStyle={{
+        backgroundColor: "#0a0a0a",
+        border: "1px solid #333",
+        fontSize: "10px",
+      }}
+    />
+    
+    {/* Aplicamos el gradiente horizontal */}
+    <Bar 
+      dataKey="value" 
+      fill="url(#prideGradientHorizontal)" 
+      radius={[0, 4, 4, 0]} 
+      barSize={20}
+    >
+      <LabelList
+        dataKey="value"
+        position="right"
+        fill="#ffffff"
+        fontSize={10}
+        formatter={(v: any) => `${v}€`}
+        offset={10}
+      />
+      {/* Hemos quitado el mapeo de Cells para que todas usen el gradiente */}
+    </Bar>
+  </BarChart>
+</ResponsiveContainer>
         </div>
         <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/10 flex flex-col justify-center items-center text-center shadow-lg">
           <h3 className="text-[10px] font-bold text-red-400/80 uppercase tracking-widest mb-1">

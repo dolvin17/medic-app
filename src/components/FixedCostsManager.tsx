@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import {
   BarChart,
   Bar,
+  YAxis,
   XAxis,
   ResponsiveContainer,
   Cell,
@@ -99,10 +100,21 @@ export default function FixedExpensesTable() {
     }
     setIsSaving(false);
   };
-  // Cálculo de Gastos Totales
+  // 1. Filtramos los gastos para que aparezcan solo si se crearon en o antes del mes seleccionado
+  const filteredByMonth = useMemo(() => {
+    return expenses.filter((exp) => {
+      if (!exp.created_at) return true;
+      const dateGasto = new Date(exp.created_at);
+      const [yearSel, monthSel] = selectedMonth.split("-").map(Number);
+      const dateLimite = new Date(yearSel, monthSel, 0); // Último día del mes seleccionado
+      return dateGasto <= dateLimite;
+    });
+  }, [expenses, selectedMonth]);
+
+  // 2. El total ahora suma solo los gastos filtrados para ese mes
   const totalFixed = useMemo(
-    () => expenses.reduce((acc, exp) => acc + Number(exp.monto), 0),
-    [expenses]
+    () => filteredByMonth.reduce((acc, exp) => acc + Number(exp.monto), 0),
+    [filteredByMonth]
   );
 
   // Cálculo del Balance (Ingreso - Gastos)
@@ -111,21 +123,57 @@ export default function FixedExpensesTable() {
     return ingreso - totalFixed;
   }, [incomeLastMonth, totalFixed]);
 
-  // Histórico para el gráfico (Desfase de un mes para visualizar el flujo)
   const monthlyHistoryData = useMemo(() => {
-    const groups: Record<string, number> = {};
-    expenses.forEach((exp) => {
-      const d = exp.created_at ? new Date(exp.created_at) : new Date();
-      const calculationMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      const label = calculationMonth.toLocaleDateString("es-ES", {
-        month: "short",
+    const months = [
+      "ENE",
+      "FEB",
+      "MAR",
+      "ABR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AGO",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DIC",
+    ];
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    // Generamos los últimos 6 meses
+    const last6Months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      last6Months.push({
+        monthLabel: months[d.getMonth()],
+        timestamp: d.getTime(),
+        month: d.getMonth(),
+        year: d.getFullYear(),
       });
-      groups[label] = (groups[label] || 0) + Number(exp.monto);
+    }
+
+    return last6Months.map((m) => {
+      const totalForMonth = expenses.reduce((acc, exp) => {
+        // Si no hay fecha, lo sumamos por defecto
+        if (!exp.created_at) return acc + Number(exp.monto);
+
+        const dateGasto = new Date(exp.created_at);
+        // Solo comparamos Año y Mes para que sea exacto
+        const isPastOrCurrent =
+          dateGasto.getFullYear() < m.year ||
+          (dateGasto.getFullYear() === m.year &&
+            dateGasto.getMonth() <= m.month);
+
+        return isPastOrCurrent ? acc + Number(exp.monto) : acc;
+      }, 0);
+
+      return {
+        name: m.monthLabel,
+        value: totalForMonth,
+      };
     });
-    return Object.keys(groups).map((key) => ({
-      name: key,
-      value: groups[key],
-    }));
   }, [expenses]);
 
   const handleInputChange = (id: string, value: string) => {
@@ -222,11 +270,11 @@ export default function FixedExpensesTable() {
 
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl text-white font-bold tracking-tight">
-            Gestión de Presupuesto
+          <h2 className="text-xl text-white tracking-tight">
+            GESTIÓN DE PRESUPUESTO
           </h2>
           <p className="text-[10px] text-purple-400 uppercase tracking-[0.2em]">
-            Base de cálculo: Mes Anterior
+            Base de cálculo: Introduce Manualmente tu Salario
           </p>
         </div>
         <div className="bg-white/[0.03] p-2 rounded-xl border border-white/[0.08]">
@@ -277,13 +325,13 @@ export default function FixedExpensesTable() {
             -{totalFixed}€
           </div>
           <p className="text-[9px] text-gray-500 mt-1">
-            Suma de la tabla inferior
+            Suma de todos tus gastos
           </p>
         </div>
 
         {/* BALANCE FINAL */}
-        <div className="p-6 rounded-2xl bg-purple-500/10 border border-purple-500/20 shadow-lg">
-          <h3 className="text-[10px] font-bold text-purple-400 uppercase mb-2">
+        <div className="p-6 rounded-2xl bg-green-400/10 border border-purple-500/20 shadow-lg">
+          <h3 className="text-[10px] font-bold text-green-400 uppercase mb-2">
             Dinero Restante
           </h3>
           <div className="text-3xl font-mono font-bold text-white">
@@ -297,34 +345,58 @@ export default function FixedExpensesTable() {
 
       {/* GRÁFICO */}
       <div className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={monthlyHistoryData}>
-            <XAxis
-              dataKey="name"
-              stroke="#4b5563"
-              fontSize={9}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Bar dataKey="value" fill="#333" radius={[4, 4, 0, 0]} barSize={30}>
-              <LabelList
-                dataKey="value"
-                position="top"
-                fill="#a855f7"
-                fontSize={10}
-                formatter={(v: any) => `${v}€`}
-              />
-              {monthlyHistoryData.map((_, i) => (
-                <Cell
-                  key={i}
-                  fill={
-                    i === monthlyHistoryData.length - 1 ? "#a855f7" : "#333"
-                  }
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <ResponsiveContainer width="100%" height="100%">
+  <BarChart
+    data={monthlyHistoryData}
+    margin={{ top: 30, right: 0, left: 0, bottom: 0 }}
+  >
+    {/* DEFINICIÓN DEL GRADIENTE DIAGONAL ARCOÍRIS */}
+    <defs>
+      <linearGradient id="prideGradient" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0%" stopColor="#FF0000" />    {/* Rojo */}
+        <stop offset="20%" stopColor="#FF8E00" />   {/* Naranja */}
+        <stop offset="40%" stopColor="#FFFF00" />   {/* Amarillo */}
+        <stop offset="60%" stopColor="#008E00" />   {/* Verde */}
+        <stop offset="80%" stopColor="#00C0C0" />   {/* Turquesa/Azul */}
+        <stop offset="100%" stopColor="#8E008E" />  {/* Violeta */}
+      </linearGradient>
+    </defs>
+
+    <YAxis
+      hide
+      domain={[0, (dataMax: number) => Math.round(dataMax * 1.15)]}
+    />
+
+    <XAxis
+      dataKey="name"
+      stroke="#4b5563"
+      fontSize={9}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    {/* Aplicamos el gradiente usando url(#prideGradient) */}
+    <Bar 
+      dataKey="value" 
+      fill="url(#prideGradient)" 
+      radius={[4, 4, 0, 0]} 
+      barSize={30}
+    >
+      <LabelList
+        dataKey="value"
+        position="top"
+        fill="#ffffff" 
+        fontSize={10}
+        formatter={(v: any) => `${v}€`}
+        offset={10}
+      />
+      
+      {/* IMPORTANTE: Eliminamos el mapeo de Cells con colores fijos (#333, #a855f7) 
+          para que el gradiente se aplique a todas las barras por igual.
+      */}
+    </Bar>
+  </BarChart>
+</ResponsiveContainer>
       </div>
 
       {/* TABLA CHECKLIST */}
@@ -341,7 +413,7 @@ export default function FixedExpensesTable() {
         </div>
         <table className="min-w-full text-xs text-left">
           <tbody className="divide-y divide-white/[0.05]">
-            {expenses.map((exp) => (
+            {filteredByMonth.map((exp) => (
               <tr key={exp.id} className="hover:bg-white/[0.01]">
                 <td className="px-6 py-4 text-white/90 font-medium">
                   {exp.nombre}
