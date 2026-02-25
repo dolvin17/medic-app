@@ -10,7 +10,6 @@ export default function Page() {
 		<div className="p-4">
 		<ExpenseManager/>
 		<FixedCostsManager/>
-		<DieselManager/>
 		</div>
 		</>
 	);
