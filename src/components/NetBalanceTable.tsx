@@ -55,13 +55,14 @@ export default function NetBalanceTable({ income }: NetBalanceProps) {
       const formattedData = Object.keys(groups).map((key) => {
         const brutoMensual = groups[key];
         const tasaIRPF = brutoMensual > 3000 ? 0.15 : 0.07;
-        const netoMensual = brutoMensual * (1 - tasaIRPF);
-        const irpfPagado = brutoMensual * tasaIRPF; // <--- Calculamos el descuento
+        const irpfPagado = brutoMensual * tasaIRPF;
+        const netoMensual = brutoMensual - irpfPagado;
 
         return {
           name: key,
+          bruto: Math.round(brutoMensual), // <--- Añadimos esto
           value: Math.round(netoMensual),
-          irpf: Math.round(irpfPagado), // <--- Lo pasamos al gráfico
+          irpf: Math.round(irpfPagado),
         };
       });
 
@@ -130,17 +131,38 @@ export default function NetBalanceTable({ income }: NetBalanceProps) {
               cursor={{ fill: "white", opacity: 0.05 }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
+                  const data = payload[0].payload;
                   return (
-                    <div className="bg-[#0a0a0a] border border-white/10 p-3 rounded-xl shadow-xl">
-                      <p className="text-[10px] text-gray-400 uppercase mb-1 font-bold">
-                        {payload[0].payload.name}
+                    <div className="bg-[#0a0a0a] border border-white/10 p-3 rounded-xl shadow-2xl min-w-[120px]">
+                      <p className="text-[10px] text-gray-500 uppercase mb-2 font-black tracking-widest border-b border-white/5 pb-1">
+                        {data.name}
                       </p>
-                      <p className="text-xs text-green-400 font-mono">
-                        Neto: {payload[0].value}€
-                      </p>
-                      <p className="text-[10px] text-orange-400 font-mono mt-1">
-                        IRPF: -{payload[0].payload.irpf}€
-                      </p>
+                      <div className="space-y-1 font-mono">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[9px] text-gray-400 uppercase">
+                            Bruto:
+                          </span>
+                          <span className="text-xs text-white">
+                            +{data.bruto}€
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-[9px] text-gray-400 uppercase">
+                            IRPF:
+                          </span>
+                          <span className="text-xs text-orange-500">
+                            -{data.irpf}€
+                          </span>
+                        </div>
+                        <div className="border-t border-white/10 mt-1 pt-1 flex justify-between gap-4">
+                          <span className="text-[9px] text-purple-400 font-bold uppercase">
+                            Neto:
+                          </span>
+                          <span className="text-xs text-green-400 font-bold">
+                            {data.value}€
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   );
                 }
