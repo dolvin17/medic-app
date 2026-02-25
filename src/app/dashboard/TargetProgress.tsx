@@ -69,8 +69,8 @@ export default function TargetProgress({ stats }: TargetProgressProps) {
       {/* Barra de Progreso Estilo Vercel */}
       <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
         <div 
-          className="h-full bg-gradient-to-r from-purple-500 to-white transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(168,85,247,0.4)]"
-          style={{ width: `${progressPercentage}%` }}
+     className="h-full bg-pride-gradient transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+  style={{ width: `${progressPercentage}%` }}
         />
       </div>
 
