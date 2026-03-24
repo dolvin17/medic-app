@@ -37,44 +37,41 @@ export default function FixedExpensesTable() {
   });
 
   const fetchExpenses = useCallback(async () => {
+    setLoading(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    if (!user) {
+      setExpenses([]); // <--- Limpieza de seguridad
+      setLoading(false);
+      return;
+    }
+
+    // 1. Traer gastos del usuario
     const { data: expensesData } = await supabase
       .from("gastos_fijos")
       .select("*")
+      .eq("user_id", user.id) // <--- Filtra por usuario para evitar errores
       .eq("activo", true)
       .order("created_at", { ascending: true });
+
     if (expensesData) setExpenses(expensesData);
 
-    if (user) {
-      const { data: userData, error } = await supabase
-        .from("usuarios")
-        .select("ingreso_mensual")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (userData) {
-        setIncomeLastMonth(userData.ingreso_mensual || 0);
-      }
+    // 2. Traer el ingreso guardado
+    const { data: userData } = await supabase
+      .from("usuarios")
+      .select("ingreso_mensual")
+      .eq("id", user.id)
+      .single(); // <--- Usamos single para obtener el objeto directo
+
+    if (userData) {
+      setIncomeLastMonth(userData.ingreso_mensual || 0);
     }
+
     setLoading(false);
   }, []);
 
-  const handleIncomeSave = async (value: string) => {
-    const valorNum = parseFloat(value) || 0;
-    setIncomeLastMonth(valorNum);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      await supabase
-        .from("usuarios")
-        .update({ ingreso_mensual: valorNum })
-        .eq("id", user.id);
-    }
-  };
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
@@ -85,18 +82,28 @@ export default function FixedExpensesTable() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (user) {
-      const { error } = await supabase
-        .from("usuarios")
-        .update({ ingreso_mensual: Number(incomeLastMonth) || 0 })
-        .eq("id", user.id);
+    if (!user) {
+      setMessage("❌ No hay sesión");
+      setIsSaving(false);
+      return;
+    }
 
-      if (!error) {
-        setMessage("✅ Ingreso guardado");
-        setTimeout(() => setMessage(""), 3000);
-      } else {
-        setMessage("❌ Error");
-      }
+    // Convertimos a número para asegurar que la DB lo acepte (numeric)
+    const montoAGuardar = Number(incomeLastMonth) || 0;
+
+    const { error } = await supabase
+      .from("usuarios")
+      .update({ ingreso_mensual: montoAGuardar })
+      .eq("id", user.id);
+
+    if (!error) {
+      setMessage("✅ Ingreso guardado correctamente");
+      // Opcional: Refrescar los datos para confirmar
+      fetchExpenses();
+      setTimeout(() => setMessage(""), 3000);
+    } else {
+      console.error("Error detallado:", error);
+      setMessage(`❌ Error: ${error.message}`);
     }
     setIsSaving(false);
   };
@@ -142,35 +149,32 @@ export default function FixedExpensesTable() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // Generamos los últimos 6 meses
     const last6Months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(currentYear, currentMonth - i, 1);
       last6Months.push({
-        monthLabel: months[d.getMonth()],
-        timestamp: d.getTime(),
+        label: months[d.getMonth()],
         month: d.getMonth(),
         year: d.getFullYear(),
       });
     }
 
     return last6Months.map((m) => {
+      // Calculamos el último día de ese mes específico del pasado
+      const ultimoDiaMesPasado = new Date(m.year, m.month + 1, 0);
+
       const totalForMonth = expenses.reduce((acc, exp) => {
-        // Si no hay fecha, lo sumamos por defecto
+        // Si no tiene fecha, es antiguo, lo sumamos siempre
         if (!exp.created_at) return acc + Number(exp.monto);
 
         const dateGasto = new Date(exp.created_at);
-        // Solo comparamos Año y Mes para que sea exacto
-        const isPastOrCurrent =
-          dateGasto.getFullYear() < m.year ||
-          (dateGasto.getFullYear() === m.year &&
-            dateGasto.getMonth() <= m.month);
 
-        return isPastOrCurrent ? acc + Number(exp.monto) : acc;
+        // REGLA DE ORO: Solo sumamos el gasto si se creó ANTES o DURANTE ese mes
+        return dateGasto <= ultimoDiaMesPasado ? acc + Number(exp.monto) : acc;
       }, 0);
 
       return {
-        name: m.monthLabel,
+        name: m.label,
         value: totalForMonth,
       };
     });
@@ -345,58 +349,58 @@ export default function FixedExpensesTable() {
 
       {/* GRÁFICO */}
       <div className="p-6 rounded-2xl bg-[#0a0a0a] border border-white/[0.08] h-48">
-      <ResponsiveContainer width="100%" height="100%">
-  <BarChart
-    data={monthlyHistoryData}
-    margin={{ top: 30, right: 0, left: 0, bottom: 0 }}
-  >
-    {/* DEFINICIÓN DEL GRADIENTE DIAGONAL ARCOÍRIS */}
-    <defs>
-      <linearGradient id="prideGradient" x1="0" y1="1" x2="1" y2="0">
-        <stop offset="0%" stopColor="#FF0000" />    {/* Rojo */}
-        <stop offset="20%" stopColor="#FF8E00" />   {/* Naranja */}
-        <stop offset="40%" stopColor="#FFFF00" />   {/* Amarillo */}
-        <stop offset="60%" stopColor="#008E00" />   {/* Verde */}
-        <stop offset="80%" stopColor="#00C0C0" />   {/* Turquesa/Azul */}
-        <stop offset="100%" stopColor="#8E008E" />  {/* Violeta */}
-      </linearGradient>
-    </defs>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={monthlyHistoryData}
+            margin={{ top: 30, right: 0, left: 0, bottom: 0 }}
+          >
+            {/* DEFINICIÓN DEL GRADIENTE DIAGONAL ARCOÍRIS */}
+            <defs>
+              <linearGradient id="prideGradient" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0%" stopColor="#FF0000" /> {/* Rojo */}
+                <stop offset="20%" stopColor="#FF8E00" /> {/* Naranja */}
+                <stop offset="40%" stopColor="#FFFF00" /> {/* Amarillo */}
+                <stop offset="60%" stopColor="#008E00" /> {/* Verde */}
+                <stop offset="80%" stopColor="#00C0C0" /> {/* Turquesa/Azul */}
+                <stop offset="100%" stopColor="#8E008E" /> {/* Violeta */}
+              </linearGradient>
+            </defs>
 
-    <YAxis
-      hide
-      domain={[0, (dataMax: number) => Math.round(dataMax * 1.15)]}
-    />
+            <YAxis
+              hide
+              domain={[0, (dataMax: number) => Math.round(dataMax * 1.15)]}
+            />
 
-    <XAxis
-      dataKey="name"
-      stroke="#4b5563"
-      fontSize={9}
-      axisLine={false}
-      tickLine={false}
-    />
+            <XAxis
+              dataKey="name"
+              stroke="#4b5563"
+              fontSize={9}
+              axisLine={false}
+              tickLine={false}
+            />
 
-    {/* Aplicamos el gradiente usando url(#prideGradient) */}
-    <Bar 
-      dataKey="value" 
-      fill="url(#prideGradient)" 
-      radius={[4, 4, 0, 0]} 
-      barSize={30}
-    >
-      <LabelList
-        dataKey="value"
-        position="top"
-        fill="#ffffff" 
-        fontSize={10}
-        formatter={(v: any) => `${v}€`}
-        offset={10}
-      />
-      
-      {/* IMPORTANTE: Eliminamos el mapeo de Cells con colores fijos (#333, #a855f7) 
+            {/* Aplicamos el gradiente usando url(#prideGradient) */}
+            <Bar
+              dataKey="value"
+              fill="url(#prideGradient)"
+              radius={[4, 4, 0, 0]}
+              barSize={30}
+            >
+              <LabelList
+                dataKey="value"
+                position="top"
+                fill="#ffffff"
+                fontSize={10}
+                formatter={(v: any) => `${v}€`}
+                offset={10}
+              />
+
+              {/* IMPORTANTE: Eliminamos el mapeo de Cells con colores fijos (#333, #a855f7) 
           para que el gradiente se aplique a todas las barras por igual.
       */}
-    </Bar>
-  </BarChart>
-</ResponsiveContainer>
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* TABLA CHECKLIST */}
