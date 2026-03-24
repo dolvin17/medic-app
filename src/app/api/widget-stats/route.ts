@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     total: Math.round(totalMesActual),
     mes: ahora.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),
-    vibe: "💪🏽 ¡A por ello, doc!",
+    vibe: "💪🏽 ¡A por ello, Mor",
     actualizado: ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   });
 }
