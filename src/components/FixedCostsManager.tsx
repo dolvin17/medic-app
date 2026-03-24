@@ -59,22 +59,24 @@ export default function FixedExpensesTable() {
     if (expensesData) setExpenses(expensesData);
 
     // 2. Traer el ingreso guardado
-    const { data: userData } = await supabase
-      .from("usuarios")
-      .select("ingreso_mensual")
-      .eq("id", user.id)
-      .single(); // <--- Usamos single para obtener el objeto directo
+    const { data: incomeData } = await supabase
+    .from("ingresos_mensuales")
+    .select("monto")
+    .eq("user_id", user.id)
+    .eq("mes_ano", selectedMonth) // Filtramos por el mes del selector
+    .maybeSingle();
 
-    if (userData) {
-      setIncomeLastMonth(userData.ingreso_mensual || 0);
-    }
-
-    setLoading(false);
-  }, []);
+  if (incomeData) {
+    setIncomeLastMonth(incomeData.monto);
+  } else {
+    setIncomeLastMonth(""); // Si no hay nada guardado para este mes, lo dejamos vacío
+  }
+   setLoading(false);
+}, [selectedMonth]);
 
   useEffect(() => {
     fetchExpenses();
-  }, [fetchExpenses]);
+  }, [fetchExpenses, selectedMonth]);
 
   const saveIncome = async () => {
     setIsSaving(true);
@@ -91,22 +93,22 @@ export default function FixedExpensesTable() {
     // Convertimos a número para asegurar que la DB lo acepte (numeric)
     const montoAGuardar = Number(incomeLastMonth) || 0;
 
-    const { error } = await supabase
-      .from("usuarios")
-      .update({ ingreso_mensual: montoAGuardar })
-      .eq("id", user.id);
-
-    if (!error) {
-      setMessage("✅ Ingreso guardado correctamente");
-      // Opcional: Refrescar los datos para confirmar
-      fetchExpenses();
-      setTimeout(() => setMessage(""), 3000);
-    } else {
-      console.error("Error detallado:", error);
-      setMessage(`❌ Error: ${error.message}`);
-    }
-    setIsSaving(false);
-  };
+   const { error } = await supabase
+    .from("ingresos_mensuales")
+    .upsert({ 
+      user_id: user.id, 
+      monto: montoAGuardar, 
+      mes_ano: selectedMonth 
+    });
+  if (!error) {
+    setMessage(`✅ Guardado para ${selectedMonth}`);
+    setTimeout(() => setMessage(""), 3000);
+  } else {
+    console.error(error);
+    setMessage("❌ Error al guardar");
+  }
+  setIsSaving(false);
+};
   // 1. Filtramos los gastos para que aparezcan solo si se crearon en o antes del mes seleccionado
   const filteredByMonth = useMemo(() => {
     return expenses.filter((exp) => {
