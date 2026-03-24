@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   }
 
   // 4. Calculamos el total del mes actual
-  const ahora = new Date();
+  /*const ahora = new Date();
   const mesActual = ahora.getMonth();
   const anoActual = ahora.getFullYear();
 
@@ -57,5 +57,31 @@ export async function GET(req: Request) {
     mes: ahora.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),
     vibe: "💪🏽 ¡A por ello, Mor",
     actualizado: ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  });
+}*/
+// ... después de obtener los logs
+  const ahora = new Date();
+  // Forzamos el mes y año actuales para evitar errores de zona horaria
+  const mesActual = ahora.getMonth(); 
+  const anoActual = ahora.getFullYear();
+
+  const logsDelMes = logs.filter(log => {
+    const fechaLog = new Date(log.created_at);
+    return fechaLog.getMonth() === mesActual && 
+           fechaLog.getFullYear() === anoActual;
+  });
+
+  const totalMesActual = logsDelMes.reduce((acc, log) => acc + Number(log.monto_generado), 0);
+
+  // DEBUG: Vamos a ver qué está pasando realmente
+  console.log(`Usuario: ${userId} | Logs totales: ${logs.length} | Logs mes: ${logsDelMes.length}`);
+
+  return NextResponse.json({
+    total: Math.round(totalMesActual),
+    mes: ahora.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),
+    vibe: totalMesActual > 0 ? "💪🏽 ¡A por ello, doc!" : "¡A estrenar el mes! ☕️",
+    actualizado: ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+    // Añadimos esto solo para probar:
+    debug_count: logsDelMes.length 
   });
 }
