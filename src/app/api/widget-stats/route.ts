@@ -40,7 +40,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     total: Math.round(total),
     mes: ahora.toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),
-    vibe: total > 0 ? "💪🏽 ¡A por ello, Mor!" : "¡A estrenar el mes! ☕️",
+    vibe: total > 0 ? "Lo estás haciendo increíble, Mor 🫀" : "¡A estrenar el mes! ☕️",
     actualizado: ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
     // DEBUG FINAL: Si esto sale 0, es que no hay filas para ese UUID
     debug_total_filas_usuario: logs?.length || 0 
